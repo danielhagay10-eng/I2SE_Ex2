@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>לוח בקרה - מרצה</title>
+    <!-- ספרייה להצגת קוד QR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 50px; }
+        .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); display: inline-block; }
+        button { background: #28a745; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #218838; }
+        #qrcode { margin: 20px auto; display: flex; justify-content: center; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>👨‍🏫 לוח בקרה למרצה</h1>
+        <p>לחץ על הכפתור כדי לפתוח שיעור חדש ולהציג את ה-QR לתלמידים:</p>
+        
+        <input type="text" id="courseName" value="Computer Science" placeholder="שם הקורס" style="padding: 10px; font-size: 16px; margin-bottom: 15px;"><br>
+        <button onclick="openSession()">פתח שיעור וצור QR</button>
+
+        <h3 id="sessionStatus"></h3>
+        <div id="qrcode"></div>
+    </div>
+
+    <script>
+        async function openSession() {
+            const courseName = document.getElementById('courseName').value;
+            
+            try {
+                // שליחת בקשה לשרת הפייתון שלנו שיצרנו
+                const response = await fetch('http://127.0.0.1:8000/lecturer/open_session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ course_name: courseName })
+                });
+
+                const data = await response.json();
+                
+                if(response.ok) {
+                    document.getElementById('sessionStatus').innerText = `השיעור נפתח בהצלחה! מזהה שיעור: ${data.session_id}`;
+                    
+                    // ניקוי ה-QR הישן אם קיים
+                    document.getElementById('qrcode').innerHTML = "";
+                    
+                    // יצירת קוד QR חדש על סמך הטוקן שחזר מהשרת
+                    new QRCode(document.getElementById("qrcode"), {
+                        text: data.qr_token,
+                        width: 200,
+                        height: 200
+                    });
+                } else {
+                    alert('שגיאה בפתיחת השיעור');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('לא ניתן להתחבר לשרת');
+            }
+        }
+    </script>
+
+</body>
+</html>
