@@ -11,6 +11,14 @@
         .btn { background: #007bff; color: white; border: none; padding: 12px 20px; font-size: 18px; border-radius: 5px; cursor: pointer; width: 100%; }
         .btn:hover { background: #0056b3; }
         .btn:disabled { background: #cccccc; cursor: not-allowed; }
+        
+        /* כפתורי פידבק אדום וירוק */
+        .feedback-container { display: none; margin-top: 20px; }
+        .btn-green { background: #28a745; color: white; border: none; padding: 12px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 48%; margin-left: 2%; }
+        .btn-green:hover { background: #218838; }
+        .btn-red { background: #dc3545; color: white; border: none; padding: 12px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 48%; }
+        .btn-red:hover { background: #c82333; }
+
         #statusMessage { margin-top: 20px; font-weight: bold; font-size: 16px; }
     </style>
 </head>
@@ -18,13 +26,29 @@
 
     <div class="card">
         <h2>🎓 רישום נוכחות לשיעור</h2>
-        <p>הכנס את פרטיך ואת קוד ה-QR שהוצג בכיתה:</p>
         
-        <form id="attendanceForm">
-            <input type="text" id="studentId" placeholder="מספר סטודנט / תעודת זהות" required><br>
-            <input type="text" id="qrToken" placeholder="הכנס קוד טוקן (או סרוק QR)" required><br>
-            <button type="button" class="btn" id="submitBtn">שלח נוכחות</button>
-        </form>
+        <!-- טופס הרישום הרגיל -->
+        <div id="formSection">
+            <p>הכנס את פרטיך ואת קוד ה-QR שהוצג בכיתה:</p>
+            <form id="attendanceForm">
+                <input type="text" id="studentId" placeholder="מספר סטודנט / תעודת זהות" required><br>
+                <input type="text" id="qrToken" placeholder="הכנס קוד טוקן (או סרוק QR)" required><br>
+                <button type="button" class="btn" id="submitBtn">שלח נוכחות</button>
+            </form>
+        </div>
+
+        <!-- מסך המתנה וכפתורים שמופיעים אחרי רישום מוצלח -->
+        <div id="waitingSection" class="feedback-container">
+            <h3 style="color: #28a745;">✅ הנוכחות נקלטה בהצלחה!</h3>
+            <p>השער נפתח, ממתין לתחילת השיעור ולעדכונים מהמרצה...</p>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+            <p style="font-size: 14px; color: #666;">שלח חיווי למרצה במהלך השיעור:</p>
+            <div style="display: flex; justify-content: space-between;">
+                <button class="btn-green" id="greenBtn">👍 מוכן לענות</button>
+                <button class="btn-red" id="redBtn">✋ יש לי שאלה</button>
+            </div>
+            <div id="feedbackStatus" style="margin-top: 15px; font-size: 14px; font-weight: bold;"></div>
+        </div>
 
         <div id="statusMessage"></div>
     </div>
@@ -34,7 +58,15 @@
         const studentIdInput = document.getElementById('studentId');
         const qrTokenInput = document.getElementById('qrToken');
         const statusMessage = document.getElementById('statusMessage');
+        
+        const formSection = document.getElementById('formSection');
+        const waitingSection = document.getElementById('waitingSection');
+        
+        const greenBtn = document.getElementById('greenBtn');
+        const redBtn = document.getElementById('redBtn');
+        const feedbackStatus = document.getElementById('feedbackStatus');
 
+        // שליחת טופס הנוכחות
         submitBtn.addEventListener('click', async function() {
             const studentId = studentIdInput.value.trim();
             const qrToken = qrTokenInput.value.trim();
@@ -50,12 +82,11 @@
             statusMessage.innerText = "";
 
             try {
-                // בדיקת הנתיב: אם הראוטר של התלמיד מוגדר עם prefix="/student", נשתמש בזה
                 const response = await fetch('http://127.0.0.1:8000/student/mark_attendance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        session_id: qrToken, // שים לב: אם השרת שלך מצפה למספר ולא לטוקן, נצטרך להתאים את זה בקובץ student.py
+                        session_id: qrToken, 
                         student_name: studentId 
                     })
                 });
@@ -63,10 +94,10 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    statusMessage.style.color = "green";
-                    statusMessage.innerText = "✅ הנוכחות נרשמה בהצלחה במערכת!";
-                    studentIdInput.value = "";
-                    qrTokenInput.value = "";
+                    // מעבר למסך המתנה והצגת הכפתורים
+                    formSection.style.display = "none";
+                    waitingSection.style.display = "block";
+                    statusMessage.innerText = "";
                 } else {
                     statusMessage.style.color = "red";
                     statusMessage.innerText = `❌ שגיאה: ${data.detail || "לא ניתן לרשום נוכחות"}`;
@@ -78,6 +109,28 @@
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerText = "שלח נוכחות";
+            }
+        });
+
+        // כפתור ירוק (הכל מובן)
+        greenBtn.addEventListener('click', async function() {
+            feedbackStatus.style.color = "green";
+            feedbackStatus.innerText = "✔  נשלח: מוכן לענות" ;
+            // כאן אפשר בהמשך לחבר קריאת API לשרת אם נרצה לתעד זאת
+        });
+
+        // כפתור אדום (יש לי שאלה)
+        redBtn.addEventListener('click', async function() {
+            feedbackStatus.style.color = "red";
+            feedbackStatus.innerText = "✋ נשלח: בקשה לעצירה / שאלה למרצה";
+            
+            try {
+                // שימוש בנתיב ask_question שהגדרת בשרת
+                await fetch('http://127.0.0.1:8000/student/ask_question?question=Student raised hand', {
+                    method: 'POST'
+                });
+            } catch (e) {
+                console.error(e);
             }
         });
     </script>
