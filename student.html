@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>רישום נוכחות - סטודנט</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 30px; }
+        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); display: inline-block; max-width: 400px; width: 100%; box-sizing: border-box; }
+        input { width: 90%; padding: 12px; font-size: 16px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; text-align: center; }
+        .btn { background: #007bff; color: white; border: none; padding: 12px 20px; font-size: 18px; border-radius: 5px; cursor: pointer; width: 100%; }
+        .btn:hover { background: #0056b3; }
+        .btn:disabled { background: #cccccc; cursor: not-allowed; }
+        #statusMessage { margin-top: 20px; font-weight: bold; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>🎓 רישום נוכחות לשיעור</h2>
+        <p>הכנס את פרטיך ואת קוד ה-QR שהוצג בכיתה:</p>
+        
+        <form id="attendanceForm">
+            <input type="text" id="studentId" placeholder="מספר סטודנט / תעודת זהות" required><br>
+            <input type="text" id="qrToken" placeholder="הכנס קוד טוקן (או סרוק QR)" required><br>
+            <button type="button" class="btn" id="submitBtn">שלח נוכחות</button>
+        </form>
+
+        <div id="statusMessage"></div>
+    </div>
+
+    <script>
+        const submitBtn = document.getElementById('submitBtn');
+        const studentIdInput = document.getElementById('studentId');
+        const qrTokenInput = document.getElementById('qrToken');
+        const statusMessage = document.getElementById('statusMessage');
+
+        submitBtn.addEventListener('click', async function() {
+            const studentId = studentIdInput.value.trim();
+            const qrToken = qrTokenInput.value.trim();
+
+            if (!studentId || !qrToken) {
+                statusMessage.style.color = "red";
+                statusMessage.innerText = "נא למלא את כל השדות!";
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = "שולח נוכחות...";
+            statusMessage.innerText = "";
+
+            try {
+                // בדיקת הנתיב: אם הראוטר של התלמיד מוגדר עם prefix="/student", נשתמש בזה
+                const response = await fetch('http://127.0.0.1:8000/student/mark_attendance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        session_id: qrToken, // שים לב: אם השרת שלך מצפה למספר ולא לטוקן, נצטרך להתאים את זה בקובץ student.py
+                        student_name: studentId 
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusMessage.style.color = "green";
+                    statusMessage.innerText = "✅ הנוכחות נרשמה בהצלחה במערכת!";
+                    studentIdInput.value = "";
+                    qrTokenInput.value = "";
+                } else {
+                    statusMessage.style.color = "red";
+                    statusMessage.innerText = `❌ שגיאה: ${data.detail || "לא ניתן לרשום נוכחות"}`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                statusMessage.style.color = "red";
+                statusMessage.innerText = "❌ שגיאת תקשורת מול השרת.";
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = "שלח נוכחות";
+            }
+        });
+    </script>
+
+</body>
+</html>

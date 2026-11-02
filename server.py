@@ -33,5 +33,5 @@ class SessionCreate(BaseModel):
     course_name: str
 
 class AttendanceMark(BaseModel):
-    session_id: int
+    session_id: str
     student_name: str
