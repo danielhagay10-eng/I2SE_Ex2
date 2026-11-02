@@ -1,24 +1,24 @@
 from fastapi import APIRouter
-import uuid
-from server import get_db_connection, SessionCreate
+from pydantic import BaseModel
+from server import get_db_connection
 
-# הגדרת הראוטר של המרצה
-lecturer_router = APIRouter(prefix="/lecturer", tags=["Lecturer"])
+lecturer_router = APIRouter(prefix="/lecturer")
 
-@lecturer_router.post("/open_session")
-def open_session(data: SessionCreate):
-    token = str(uuid.uuid4())[:8] # יצירת טוקן קצר ל-QR
-    
+class SessionStart(BaseModel):
+    token: str
+
+@lecturer_router.post("/start_session")
+async def start_session(data: SessionStart):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO sessions (course_name, token, status) VALUES (?, ?, ?)', 
-                   (data.course_name, token, 'active'))
-    session_id = cursor.lastrowid
+    
+    # מכיוון שה-DB ריק, ניצור מרצה וקורס פיקטיביים רק כדי שהשיעור יוכל להיווצר
+    cursor.execute("INSERT OR IGNORE INTO users (id, first_name, last_name, role) VALUES ('111', 'מרצה', 'דמו', 'lecturer')")
+    cursor.execute("INSERT OR IGNORE INTO courses (id, course_name, lecturer_id) VALUES (1, 'קורס דמו', '111')")
+    
+    # שמירת קוד ה-QR של השיעור
+    cursor.execute("INSERT INTO sessions (course_id, token, status) VALUES (1, ?, 'active')", (data.token,))
+    
     conn.commit()
     conn.close()
-    
-    return {
-        "message": "Session opened", 
-        "session_id": session_id, 
-        "qr_token": token
-    }
+    return {"status": "success", "message": "Session created in DB"}

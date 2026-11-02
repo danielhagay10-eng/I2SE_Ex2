@@ -127,11 +127,18 @@
             
             currentSessionToken = Math.random().toString(36).substring(2, 10).toUpperCase();
             
+            // --- השורה החדשה: שליחת הקוד לשרת ---
+            await fetch('http://127.0.0.1:8000/lecturer/start_session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: currentSessionToken })
+            });
+            // ------------------------------------
+
             startSection.style.display = 'none';
             qrSection.style.display = 'block';
             sessionTokenDisplay.innerText = currentSessionToken;
             
-            // השורה החדשה שמייצרת את תמונת ה-QR!
             qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${currentSessionToken}`;
             
             feedbackSection.style.display = 'block';
