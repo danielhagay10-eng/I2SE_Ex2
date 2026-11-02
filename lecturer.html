@@ -3,63 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <title>לוח בקרה - מרצה</title>
-    <!-- ספרייה להצגת קוד QR -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 50px; }
-        .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); display: inline-block; }
-        button { background: #28a745; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #218838; }
-        #qrcode { margin: 20px auto; display: flex; justify-content: center; }
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 40px; }
+        .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); display: inline-block; max-width: 600px; width: 100%; }
+        .btn { background: #28a745; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #218838; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .btn-warning:hover { background: #e0a800; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        #qrcode { margin: 20px auto; min-height: 200px; }
+        #qrcode img { display: block; margin: 0 auto; border: 5px solid #fff; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
+        #sessionStatus { color: #333; font-weight: bold; font-size: 18px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <h1>👨‍🏫 לוח בקרה למרצה</h1>
-        <p>לחץ על הכפתור כדי לפתוח שיעור חדש ולהציג את ה-QR לתלמידים:</p>
+        <p>ניהול נוכחות חכם לכיתה</p>
         
-        <input type="text" id="courseName" value="Computer Science" placeholder="שם הקורס" style="padding: 10px; font-size: 16px; margin-bottom: 15px;"><br>
-        <button onclick="openSession()">פתח שיעור וצור QR</button>
+        <!-- שלב א': פתיחת שיעור -->
+        <div id="setupSection">
+            <input type="text" id="courseName" value="Computer Science" style="padding: 10px; font-size: 16px; margin-bottom: 15px; width: 80%;"><br>
+            <button type="button" class="btn" id="openBtn">פתח שיעור חדש והצג QR</button>
+        </div>
 
-        <h3 id="sessionStatus"></h3>
-        <div id="qrcode"></div>
+        <!-- שלב ב': שיעור פעיל וניהול ה-QR -->
+        <div id="activeSessionSection" style="display: none;">
+            <h3 id="sessionStatus"></h3>
+            
+            <!-- אזור ה-QR שניתן להסתיר/להציג -->
+            <div id="qrWrapper">
+                <p style="color: #666; font-size: 14px;">הצג את הברקוד לתלמידים לסריקה:</p>
+                <div id="qrcode"></div>
+                <button type="button" class="btn btn-warning" id="toggleQrBtn">הסתר QR והתחל שיעור</button>
+            </div>
+
+            <hr style="margin: 25px 0; border: 0; border-top: 1px solid #ddd;">
+            
+            <!-- סגירת השיעור לחלוטין -->
+            <button type="button" class="btn btn-danger" id="closeBtn">סיים וסגור שיעור סופית</button>
+        </div>
     </div>
 
     <script>
-        async function openSession() {
-            const courseName = document.getElementById('courseName').value;
-            
+        const openBtn = document.getElementById('openBtn');
+        const closeBtn = document.getElementById('closeBtn');
+        const toggleQrBtn = document.getElementById('toggleQrBtn');
+        const courseNameInput = document.getElementById('courseName');
+        const sessionStatus = document.getElementById('sessionStatus');
+        const qrContainer = document.getElementById('qrcode');
+        const qrWrapper = document.getElementById('qrWrapper');
+        const setupSection = document.getElementById('setupSection');
+        const activeSessionSection = document.getElementById('activeSessionSection');
+
+        let currentSessionId = null;
+        let isQrVisible = true;
+
+        // 1. פתיחת שיעור חדש
+        openBtn.addEventListener('click', async function() {
+            openBtn.disabled = true;
+            openBtn.innerText = "פותח שיעור...";
+
             try {
-                // שליחת בקשה לשרת הפייתון שלנו שיצרנו
                 const response = await fetch('http://127.0.0.1:8000/lecturer/open_session', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ course_name: courseName })
+                    body: JSON.stringify({ course_name: courseNameInput.value })
                 });
 
                 const data = await response.json();
                 
-                if(response.ok) {
-                    document.getElementById('sessionStatus').innerText = `השיעור נפתח בהצלחה! מזהה שיעור: ${data.session_id}`;
+                if (response.ok) {
+                    currentSessionId = data.session_id;
+                    sessionStatus.innerText = `שיעור פעיל מספר: ${currentSessionId} (${courseNameInput.value})`;
                     
-                    // ניקוי ה-QR הישן אם קיים
-                    document.getElementById('qrcode').innerHTML = "";
-                    
-                    // יצירת קוד QR חדש על סמך הטוקן שחזר מהשרת
-                    new QRCode(document.getElementById("qrcode"), {
-                        text: data.qr_token,
-                        width: 200,
-                        height: 200
-                    });
+                    setupSection.style.display = 'none';
+                    activeSessionSection.style.display = 'block';
+                    qrWrapper.style.display = 'block';
+                    isQrVisible = true;
+                    toggleQrBtn.innerText = "הסתר QR והתחל שיעור";
+
+                    // יצירת ה-QR
+                    qrContainer.innerHTML = "";
+                    const qrImage = document.createElement('img');
+                    qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.qr_token)}`;
+                    qrImage.alt = "QR Code";
+                    qrContainer.appendChild(qrImage);
                 } else {
                     alert('שגיאה בפתיחת השיעור');
                 }
             } catch (error) {
                 console.error('Error:', error);
                 alert('לא ניתן להתחבר לשרת');
+            } finally {
+                openBtn.disabled = false;
+                openBtn.innerText = "פתח שיעור חדש והצג QR";
             }
-        }
+        });
+
+        // 2. כפתור להצגה או הסתרה של ה-QR בזמן שהשיעור רץ
+        toggleQrBtn.addEventListener('click', function() {
+            if (isQrVisible) {
+                qrContainer.style.display = 'none';
+                toggleQrBtn.innerText = "הצג QR שוב";
+                isQrVisible = false;
+            } else {
+                qrContainer.style.display = 'block';
+                toggleQrBtn.innerText = "הסתר QR והתחל שיעור";
+                isQrVisible = true;
+            }
+        });
+
+        // 3. סגירת השיעור לחלוטין
+        closeBtn.addEventListener('click', function() {
+            currentSessionId = null;
+            qrContainer.innerHTML = "";
+            
+            activeSessionSection.style.display = 'none';
+            setupSection.style.display = 'block';
+            
+            alert("השיעור נסגר בהצלחה!");
+        });
     </script>
 
 </body>
