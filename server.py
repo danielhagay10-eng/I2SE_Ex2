@@ -1,5 +1,5 @@
 import sqlite3
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # חיבור למסד הנתונים SQLite
 def get_db_connection():
@@ -21,17 +21,21 @@ def init_db():
     conn.execute('''
         CREATE TABLE IF NOT EXISTS attendance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id INTEGER,
-            student_name TEXT NOT NULL
+            session_id TEXT,
+            student_id TEXT NOT NULL,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL
         )
     ''')
     conn.commit()
     conn.close()
 
-# מודלים לקבלת נתונים מהמשתמש
+# מודלים של Pydantic שצריכים להיות זמינים לכל הקבצים
 class SessionCreate(BaseModel):
     course_name: str
 
 class AttendanceMark(BaseModel):
     session_id: str
-    student_name: str
+    student_id: str = Field(..., pattern=r"^\d{9}$")
+    first_name: str
+    last_name: str

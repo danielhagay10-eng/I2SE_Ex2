@@ -2,131 +2,235 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>לוח בקרה - מרצה</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>לוח בקרה למרצה</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 40px; }
-        .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); display: inline-block; max-width: 600px; width: 100%; }
-        .btn { background: #28a745; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 5px; cursor: pointer; margin: 5px; }
-        .btn:hover { background: #218838; }
-        .btn-warning { background: #ffc107; color: #333; }
-        .btn-warning:hover { background: #e0a800; }
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 20px; }
+        .dashboard { background: white; padding: 25px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); max-width: 800px; margin: auto; }
+        
+        input[type="text"] { width: 60%; padding: 10px; font-size: 16px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .btn { background: #007bff; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #0056b3; }
         .btn-danger { background: #dc3545; }
         .btn-danger:hover { background: #c82333; }
-        #qrcode { margin: 20px auto; min-height: 200px; }
-        #qrcode img { display: block; margin: 0 auto; border: 5px solid #fff; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
-        #sessionStatus { color: #333; font-weight: bold; font-size: 18px; margin-bottom: 10px; }
+        .btn-success { background: #28a745; }
+        
+        /* אזור ספירת תלמידים / מצלמה */
+        #verificationSection { display: none; margin-top: 20px; padding: 15px; border: 2px dashed #ccc; border-radius: 10px; background: #fafafa; }
+        #cameraContainer { display: none; margin-top: 15px; }
+        video { width: 100%; max-width: 400px; border-radius: 5px; border: 1px solid #ccc; }
+        canvas { display: none; }
+        #previewImage { width: 100%; max-width: 400px; border-radius: 5px; display: none; margin: 10px auto; }
+        
+        /* טבלת פידבקים חיה */
+        #feedbackSection { display: none; margin-top: 30px; text-align: right; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background-color: #007bff; color: white; }
+        .status-question { background-color: #ffe6e6; }
+        .status-volunteer { background-color: #e6f7ff; }
+        .status-clear { background-color: #e6ffe6; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h1>👨‍🏫 לוח בקרה למרצה</h1>
-        <p>ניהול נוכחות חכם לכיתה</p>
+    <div class="dashboard">
+        <h2>👨‍🏫 ניהול שיעור חכם</h2>
         
-        <!-- שלב א': פתיחת שיעור -->
-        <div id="setupSection">
-            <input type="text" id="courseName" value="Computer Science" style="padding: 10px; font-size: 16px; margin-bottom: 15px; width: 80%;"><br>
-            <button type="button" class="btn" id="openBtn">פתח שיעור חדש והצג QR</button>
+        <!-- שלב 1: פתיחת שיעור -->
+        <div id="startSection">
+            <input type="text" id="courseName" placeholder="שם הקורס (לדוגמה: מבני נתונים)" required>
+            <br>
+            <button class="btn" id="startSessionBtn">פתח שיעור והצג QR</button>
+        </div>
+<!-- שלב 2: הצגת QR וסגירת רישום -->
+        <div id="qrSection" style="display: none;">
+            <h3 style="color: #007bff;">קוד השיעור: <span id="sessionTokenDisplay"></span></h3>
+            
+            <!-- תמונת ה-QR שתיווצר אוטומטית -->
+            <img id="qrImage" src="" alt="QR Code" style="margin: 15px auto; display: block; border: 5px solid white; box-shadow: 0px 0px 5px rgba(0,0,0,0.2);">
+            
+            <p>התלמידים יכולים כעת להירשם.</p>
+            <button class="btn btn-danger" id="closeRegistrationBtn">סגור הרשמה והתחל ספירת תלמידים</button>
         </div>
 
-        <!-- שלב ב': שיעור פעיל וניהול ה-QR -->
-        <div id="activeSessionSection" style="display: none;">
-            <h3 id="sessionStatus"></h3>
-            
-            <!-- אזור ה-QR שניתן להסתיר/להציג -->
-            <div id="qrWrapper">
-                <p style="color: #666; font-size: 14px;">הצג את הברקוד לתלמידים לסריקה:</p>
-                <div id="qrcode"></div>
-                <button type="button" class="btn btn-warning" id="toggleQrBtn">הסתר QR והתחל שיעור</button>
-            </div>
+        <!-- שלב 3: צילום/העלאת תמונה לספירה -->
+        <div id="verificationSection">
+            <h3>📸 אימות נוכחות (ספירת תלמידים)</h3>
+            <p>בחר כיצד לספק תמונה של הכיתה לצורך השוואה מול כמות הנרשמים:</p>
+            <button class="btn" id="openCameraBtn">📷 פתח מצלמה</button>
+            <button class="btn" id="uploadImageBtn">📁 העלה תמונה</button>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
 
-            <hr style="margin: 25px 0; border: 0; border-top: 1px solid #ddd;">
+            <!-- אזור המצלמה -->
+            <div id="cameraContainer">
+                <video id="videoElement" autoplay playsinline></video>
+                <br>
+                <button class="btn btn-success" id="captureBtn" style="display: none;">צלם תמונה</button>
+            </div>
             
-            <!-- סגירת השיעור לחלוטין -->
-            <button type="button" class="btn btn-danger" id="closeBtn">סיים וסגור שיעור סופית</button>
+            <canvas id="canvasElement"></canvas>
+            <img id="previewImage" alt="תצוגה מקדימה">
+            
+            <br>
+            <button class="btn btn-success" id="analyzeBtn" style="display: none; margin-top: 15px; width: 100%;">שלח לספירה אוטומטית</button>
+            <h4 id="analysisResult" style="color: #28a745;"></h4>
+        </div>
+
+        <!-- שלב 4: לוח הפידבקים של התלמידים -->
+        <div id="feedbackSection">
+            <h3>💬 חיווי בזמן אמת מהסטודנטים</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>שם הסטודנט</th>
+                        <th>סטטוס</th>
+                        <th>פירוט / שאלה</th>
+                    </tr>
+                </thead>
+                <tbody id="feedbackTableBody">
+                    <!-- נתונים יתווספו לכאן דינמית -->
+                </tbody>
+            </table>
         </div>
     </div>
 
     <script>
-        const openBtn = document.getElementById('openBtn');
-        const closeBtn = document.getElementById('closeBtn');
-        const toggleQrBtn = document.getElementById('toggleQrBtn');
-        const courseNameInput = document.getElementById('courseName');
-        const sessionStatus = document.getElementById('sessionStatus');
-        const qrContainer = document.getElementById('qrcode');
-        const qrWrapper = document.getElementById('qrWrapper');
-        const setupSection = document.getElementById('setupSection');
-        const activeSessionSection = document.getElementById('activeSessionSection');
+        // --- אלמנטים ב-DOM ---
+        const qrImage = document.getElementById('qrImage');
+        const startSessionBtn = document.getElementById('startSessionBtn');
+        const closeRegistrationBtn = document.getElementById('closeRegistrationBtn');
+        const startSection = document.getElementById('startSection');
+        const qrSection = document.getElementById('qrSection');
+        const verificationSection = document.getElementById('verificationSection');
+        const feedbackSection = document.getElementById('feedbackSection');
+        const sessionTokenDisplay = document.getElementById('sessionTokenDisplay');
+        const courseName = document.getElementById('courseName');
 
-        let currentSessionId = null;
-        let isQrVisible = true;
+        // מצלמה והעלאה
+        const openCameraBtn = document.getElementById('openCameraBtn');
+        const uploadImageBtn = document.getElementById('uploadImageBtn');
+        const fileInput = document.getElementById('fileInput');
+        const cameraContainer = document.getElementById('cameraContainer');
+        const videoElement = document.getElementById('videoElement');
+        const canvasElement = document.getElementById('canvasElement');
+        const previewImage = document.getElementById('previewImage');
+        const captureBtn = document.getElementById('captureBtn');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        
+        let currentSessionToken = "";
+        let stream = null;
 
-        // 1. פתיחת שיעור חדש
-        openBtn.addEventListener('click', async function() {
-            openBtn.disabled = true;
-            openBtn.innerText = "פותח שיעור...";
+        // --- 1. פתיחת שיעור ---
+        startSessionBtn.addEventListener('click', async () => {
+            if (!courseName.value) return alert('נא להזין שם קורס');
+            
+            currentSessionToken = Math.random().toString(36).substring(2, 10).toUpperCase();
+            
+            startSection.style.display = 'none';
+            qrSection.style.display = 'block';
+            sessionTokenDisplay.innerText = currentSessionToken;
+            
+            // השורה החדשה שמייצרת את תמונת ה-QR!
+            qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${currentSessionToken}`;
+            
+            feedbackSection.style.display = 'block';
+            startFetchingFeedback();
+        });
 
+        // --- 2. סגירת רישום ומעבר למצב צילום ---
+        closeRegistrationBtn.addEventListener('click', () => {
+            qrSection.style.display = 'none';
+            verificationSection.style.display = 'block';
+        });
+
+        // --- 3. לוגיקת מצלמה ---
+        openCameraBtn.addEventListener('click', async () => {
+            fileInput.value = ""; // איפוס קובץ אם נבחר
+            previewImage.style.display = "none";
+            
             try {
-                const response = await fetch('http://127.0.0.1:8000/lecturer/open_session', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ course_name: courseNameInput.value })
-                });
-
-                const data = await response.json();
-                
-                if (response.ok) {
-                    currentSessionId = data.session_id;
-                    sessionStatus.innerText = `שיעור פעיל מספר: ${currentSessionId} (${courseNameInput.value})`;
-                    
-                    setupSection.style.display = 'none';
-                    activeSessionSection.style.display = 'block';
-                    qrWrapper.style.display = 'block';
-                    isQrVisible = true;
-                    toggleQrBtn.innerText = "הסתר QR והתחל שיעור";
-
-                    // יצירת ה-QR
-                    qrContainer.innerHTML = "";
-                    const qrImage = document.createElement('img');
-                    qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.qr_token)}`;
-                    qrImage.alt = "QR Code";
-                    qrContainer.appendChild(qrImage);
-                } else {
-                    alert('שגיאה בפתיחת השיעור');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('לא ניתן להתחבר לשרת');
-            } finally {
-                openBtn.disabled = false;
-                openBtn.innerText = "פתח שיעור חדש והצג QR";
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                videoElement.srcObject = stream;
+                cameraContainer.style.display = "block";
+                captureBtn.style.display = "inline-block";
+                analyzeBtn.style.display = "none";
+            } catch (err) {
+                alert("לא ניתן לגשת למצלמה. ודא שאישרת הרשאות דפדפן.");
+                console.error(err);
             }
         });
 
-        // 2. כפתור להצגה או הסתרה של ה-QR בזמן שהשיעור רץ
-        toggleQrBtn.addEventListener('click', function() {
-            if (isQrVisible) {
-                qrContainer.style.display = 'none';
-                toggleQrBtn.innerText = "הצג QR שוב";
-                isQrVisible = false;
-            } else {
-                qrContainer.style.display = 'block';
-                toggleQrBtn.innerText = "הסתר QR והתחל שיעור";
-                isQrVisible = true;
+        // צילום מהוידאו
+        captureBtn.addEventListener('click', () => {
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            canvasElement.getContext('2d').drawImage(videoElement, 0, 0);
+            
+            previewImage.src = canvasElement.toDataURL('image/jpeg');
+            previewImage.style.display = "block";
+            
+            // עצירת המצלמה לאחר הצילום
+            stream.getTracks().forEach(track => track.stop());
+            cameraContainer.style.display = "none";
+            analyzeBtn.style.display = "inline-block";
+        });
+
+        // --- 4. לוגיקת העלאת קובץ ---
+        uploadImageBtn.addEventListener('click', () => {
+            if (stream) stream.getTracks().forEach(track => track.stop()); // סגירת מצלמה אם פתוחה
+            cameraContainer.style.display = "none";
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    previewImage.src = event.target.result;
+                    previewImage.style.display = "block";
+                    analyzeBtn.style.display = "inline-block";
+                };
+                reader.readAsDataURL(e.target.files[0]);
             }
         });
 
-        // 3. סגירת השיעור לחלוטין
-        closeBtn.addEventListener('click', function() {
-            currentSessionId = null;
-            qrContainer.innerHTML = "";
+        // שליחה לאנליזה בשרת (אלגוריתם זיהוי בני אדם)
+        analyzeBtn.addEventListener('click', () => {
+            analyzeBtn.innerText = "מנתח תמונה...";
+            analyzeBtn.disabled = true;
             
-            activeSessionSection.style.display = 'none';
-            setupSection.style.display = 'block';
-            
-            alert("השיעור נסגר בהצלחה!");
+            // כאן נשלח את התמונה לשרת פייתון בשלב הבא
+            setTimeout(() => {
+                document.getElementById('analysisResult').innerText = "✅ זוהו 15 תלמידים בתמונה. תואם לכמות הרשומים במערכת (15).";
+                analyzeBtn.style.display = "none";
+            }, 2000);
         });
+
+        // --- 5. טבלת פידבקים בזמן אמת ---
+        function startFetchingFeedback() {
+            // סימולציה: נוסיף כמה שורות לדוגמה כדי לראות איך זה נראה
+            const tableBody = document.getElementById('feedbackTableBody');
+            
+            // כאן בעתיד נשתמש ב- fetch כדי למשוך את הנתונים מהשרת כל 3 שניות (setInterval)
+            tableBody.innerHTML = `
+                <tr class="status-question">
+                    <td>דניאל חגאי</td>
+                    <td>✋ שאלה</td>
+                    <td>לא הבנתי את ההבדל בין מחלקה לממשק, אפשר לחזור על זה?</td>
+                </tr>
+                <tr class="status-volunteer">
+                    <td>יעל כהן</td>
+                    <td>🙋‍♂️ מוכנה לענות</td>
+                    <td>-</td>
+                </tr>
+                <tr class="status-clear">
+                    <td>רון לוי</td>
+                    <td>👍 מובן</td>
+                    <td>-</td>
+                </tr>
+            `;
+        }
     </script>
-
 </body>
 </html>

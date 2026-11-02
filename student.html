@@ -12,13 +12,15 @@
         .btn:hover { background: #0056b3; }
         .btn:disabled { background: #cccccc; cursor: not-allowed; }
         
-        /* כפתורי פידבק אדום וירוק */
         .feedback-container { display: none; margin-top: 20px; }
-        .btn-green { background: #28a745; color: white; border: none; padding: 12px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 48%; margin-left: 2%; }
-        .btn-green:hover { background: #218838; }
-        .btn-red { background: #dc3545; color: white; border: none; padding: 12px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 48%; }
-        .btn-red:hover { background: #c82333; }
-
+        .action-buttons { display: flex; justify-content: space-between; gap: 10px; margin-top: 15px; }
+        .btn-green { background: #28a745; color: white; border: none; padding: 10px; font-size: 15px; border-radius: 5px; cursor: pointer; flex: 1; }
+        .btn-blue { background: #17a2b8; color: white; border: none; padding: 10px; font-size: 15px; border-radius: 5px; cursor: pointer; flex: 1; }
+        .btn-red { background: #dc3545; color: white; border: none; padding: 10px; font-size: 15px; border-radius: 5px; cursor: pointer; flex: 1; }
+        
+        #questionBox { display: none; margin-top: 15px; text-align: right; }
+        #questionBox input { width: 100%; margin-bottom: 10px; box-sizing: border-box; }
+        
         #statusMessage { margin-top: 20px; font-weight: bold; font-size: 16px; }
     </style>
 </head>
@@ -27,26 +29,33 @@
     <div class="card">
         <h2>🎓 רישום נוכחות לשיעור</h2>
         
-        <!-- טופס הרישום הרגיל -->
         <div id="formSection">
-            <p>הכנס את פרטיך ואת קוד ה-QR שהוצג בכיתה:</p>
+            <p>הכנס את פרטיך האישיים ואת קוד ה-QR:</p>
             <form id="attendanceForm">
-                <input type="text" id="studentId" placeholder="מספר סטודנט / תעודת זהות" required><br>
-                <input type="text" id="qrToken" placeholder="הכנס קוד טוקן (או סרוק QR)" required><br>
+                <input type="text" id="studentId" placeholder="תעודת זהות" required><br>
+                <input type="text" id="firstName" placeholder="שם פרטי" required><br>
+                <input type="text" id="lastName" placeholder="שם משפחה" required><br>
+                <input type="text" id="qrToken" placeholder="הכנס קוד טוקן (QR)" required><br>
                 <button type="button" class="btn" id="submitBtn">שלח נוכחות</button>
             </form>
         </div>
 
-        <!-- מסך המתנה וכפתורים שמופיעים אחרי רישום מוצלח -->
         <div id="waitingSection" class="feedback-container">
             <h3 style="color: #28a745;">✅ הנוכחות נקלטה בהצלחה!</h3>
-            <p>השער נפתח, ממתין לתחילת השיעור ולעדכונים מהמרצה...</p>
+            <p>ממתין לתחילת השיעור ולעדכונים מהמרצה...</p>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-            <p style="font-size: 14px; color: #666;">שלח חיווי למרצה במהלך השיעור:</p>
-            <div style="display: flex; justify-content: space-between;">
-                <button class="btn-green" id="greenBtn">👍 מוכן לענות</button>
-                <button class="btn-red" id="redBtn">✋ יש לי שאלה</button>
+            
+            <div class="action-buttons">
+                <button class="btn-green" id="greenBtn">👍 מובן</button>
+                <button class="btn-blue" id="blueBtn">🙋‍♂️ מוכן לענות</button>
+                <button class="btn-red" id="redBtn">✋ שאלה</button>
             </div>
+            
+            <div id="questionBox">
+                <input type="text" id="questionText" placeholder="כתוב את השאלה שלך כאן...">
+                <button class="btn" id="sendQuestionBtn" style="padding: 10px;">שלח שאלה</button>
+            </div>
+
             <div id="feedbackStatus" style="margin-top: 15px; font-size: 14px; font-weight: bold;"></div>
         </div>
 
@@ -56,24 +65,40 @@
     <script>
         const submitBtn = document.getElementById('submitBtn');
         const studentIdInput = document.getElementById('studentId');
+        const firstNameInput = document.getElementById('firstName');
+        const lastNameInput = document.getElementById('lastName');
         const qrTokenInput = document.getElementById('qrToken');
         const statusMessage = document.getElementById('statusMessage');
         
         const formSection = document.getElementById('formSection');
         const waitingSection = document.getElementById('waitingSection');
-        
         const greenBtn = document.getElementById('greenBtn');
+        const blueBtn = document.getElementById('blueBtn');
         const redBtn = document.getElementById('redBtn');
+        const questionBox = document.getElementById('questionBox');
+        const questionText = document.getElementById('questionText');
+        const sendQuestionBtn = document.getElementById('sendQuestionBtn');
         const feedbackStatus = document.getElementById('feedbackStatus');
 
-        // שליחת טופס הנוכחות
+        let currentStudentName = "";
+        let currentSessionId = "";
+
         submitBtn.addEventListener('click', async function() {
             const studentId = studentIdInput.value.trim();
+            const firstName = firstNameInput.value.trim();
+            const lastName = lastNameInput.value.trim();
             const qrToken = qrTokenInput.value.trim();
 
-            if (!studentId || !qrToken) {
+            if (!studentId || !firstName || !lastName || !qrToken) {
                 statusMessage.style.color = "red";
                 statusMessage.innerText = "נא למלא את כל השדות!";
+                return;
+            }
+
+            const idRegex = /^\d{9}$/;
+            if (!idRegex.test(studentId)) {
+                statusMessage.style.color = "red";
+                statusMessage.innerText = "❌ תעודת זהות חייבת להכיל בדיוק 9 ספרות!";
                 return;
             }
 
@@ -87,14 +112,18 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         session_id: qrToken, 
-                        student_name: studentId 
+                        student_id: studentId,
+                        first_name: firstName,
+                        last_name: lastName
                     })
                 });
 
                 const data = await response.json();
                 
                 if (response.ok) {
-                    // מעבר למסך המתנה והצגת הכפתורים
+                    currentStudentName = firstName + " " + lastName;
+                    currentSessionId = qrToken;
+                    
                     formSection.style.display = "none";
                     waitingSection.style.display = "block";
                     statusMessage.innerText = "";
@@ -112,21 +141,49 @@
             }
         });
 
-        // כפתור ירוק (הכל מובן)
-        greenBtn.addEventListener('click', async function() {
+        // כפתור ירוק
+        greenBtn.addEventListener('click', function() {
+            questionBox.style.display = "none";
             feedbackStatus.style.color = "green";
-            feedbackStatus.innerText = "✔  נשלח: מוכן לענות" ;
-            // כאן אפשר בהמשך לחבר קריאת API לשרת אם נרצה לתעד זאת
+            feedbackStatus.innerText = "✔ נשלח: הכל מובן";
         });
 
-        // כפתור אדום (יש לי שאלה)
-        redBtn.addEventListener('click', async function() {
-            feedbackStatus.style.color = "red";
-            feedbackStatus.innerText = "✋ נשלח: בקשה לעצירה / שאלה למרצה";
+        // כפתור כחול - מתנדב לענות
+        blueBtn.addEventListener('click', async function() {
+            questionBox.style.display = "none";
+            feedbackStatus.style.color = "#17a2b8";
+            feedbackStatus.innerText = "🙋‍♂️ המרצה עודכן שאתה מוכן לענות!";
             
             try {
-                // שימוש בנתיב ask_question שהגדרת בשרת
-                await fetch('http://127.0.0.1:8000/student/ask_question?question=Student raised hand', {
+                // נבנה את הנתיב הזה בשרת בשלב הבא
+                await fetch(`http://127.0.0.1:8000/student/volunteer?session_id=${currentSessionId}&student_name=${currentStudentName}`, {
+                    method: 'POST'
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        });
+
+        // כפתור אדום - פותח תיבת טקסט
+        redBtn.addEventListener('click', function() {
+            feedbackStatus.innerText = "";
+            questionBox.style.display = "block";
+            questionText.focus();
+        });
+
+        // שליחת השאלה הכתובה
+        sendQuestionBtn.addEventListener('click', async function() {
+            const qText = questionText.value.trim();
+            if (!qText) return;
+
+            feedbackStatus.style.color = "red";
+            feedbackStatus.innerText = "✋ שאלתך נשלחה למרצה.";
+            questionBox.style.display = "none";
+            questionText.value = ""; // איפוס הטקסט
+
+            try {
+                // נעדכן את השרת לקבל את השאלה המלאה בשלב הבא
+                await fetch(`http://127.0.0.1:8000/student/ask_question?session_id=${currentSessionId}&student_name=${currentStudentName}&question=${encodeURIComponent(qText)}`, {
                     method: 'POST'
                 });
             } catch (e) {
