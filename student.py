@@ -63,3 +63,16 @@ async def ask_question(session_id: str, student_id: str, question: str):
     conn.commit()
     conn.close()
     return {"status": "success", "message": "Question registered"}
+
+    # כאן לבדוק האם השיעור התחיל 
+@student_router.get("/check_status/{token}")
+async def check_status(token: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT status FROM sessions WHERE token = ?", (token,))
+    session = cursor.fetchone()
+    conn.close()
+    
+    if session:
+        return {"status": session["status"]}
+    raise HTTPException(status_code=404, detail="Session not found")

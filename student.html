@@ -42,10 +42,10 @@
 
         <div id="waitingSection" class="feedback-container">
             <h3 style="color: #28a745;">✅ הנוכחות נקלטה בהצלחה!</h3>
-            <p>ממתין לתחילת השיעור ולעדכונים מהמרצה...</p>
+            <p id="waitingText">ממתין לתחילת השיעור ולעדכונים מהמרצה...</p>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
             
-            <div class="action-buttons">
+           <div class="action-buttons" id="actionButtons" style="display: none;">
                 <button class="btn-green" id="greenBtn">👍 מובן</button>
                 <button class="btn-blue" id="blueBtn">🙋‍♂️ מוכן לענות</button>
                 <button class="btn-red" id="redBtn">✋ שאלה</button>
@@ -83,6 +83,9 @@
         let currentStudentName = "";
         let currentSessionId = "";
 
+        // --- שליחת פרטי הנוכחות ובדיקת תחילת השיעור ---
+        // הפונקציה בודקת שהפרטים תקינים, שולחת לשרת כדי לסמן נוכחות, ואז מתחילה טיימר (setInterval)
+        // שבודק כל 3 שניות מול השרת אם המרצה "נעל" את ההרשמה (כלומר התחיל את השיעור).
         submitBtn.addEventListener('click', async function() {
             const studentId = studentIdInput.value.trim();
             const firstName = firstNameInput.value.trim();
@@ -107,6 +110,7 @@
             statusMessage.innerText = "";
 
             try {
+                // שלב ראשון: סימון הנוכחות
                 const response = await fetch('http://127.0.0.1:8000/student/mark_attendance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -127,6 +131,28 @@
                     formSection.style.display = "none";
                     waitingSection.style.display = "block";
                     statusMessage.innerText = "";
+                    
+                    feedbackStatus.style.color = "orange";
+                    feedbackStatus.innerText = "⏳ ממתין שהמרצה יסיים את הרישום...";
+                    
+                    // --- לוגיקת בדיקת הסטטוס כל 3 שניות ---
+                    const statusInterval = setInterval(async () => {
+                        try {
+                            const res = await fetch(`http://127.0.0.1:8000/student/check_status/${qrToken}`);
+                            const statusData = await res.json();
+                            
+                            if (statusData.status === 'locked') {
+                                clearInterval(statusInterval); // עוצרים את הלולאה כי השיעור התחיל
+                                document.getElementById('actionButtons').style.display = "flex"; // מציגים כפתורים
+                                document.getElementById('waitingText').style.display = "none";
+                                feedbackStatus.style.color = "green";
+                                feedbackStatus.innerText = "✅ השיעור התחיל! ניתן להשתתף.";
+                            }
+                        } catch (e) {
+                            console.error(e);
+                        }
+                    }, 3000); // 3000 מילישניות = 3 שניות
+
                 } else {
                     statusMessage.style.color = "red";
                     statusMessage.innerText = `❌ שגיאה: ${data.detail || "לא ניתן לרשום נוכחות"}`;
@@ -141,14 +167,16 @@
             }
         });
 
-        // כפתור ירוק
+        // --- כפתור מובן ---
+        // רק מציג לסטודנט שהכל הובן. בשלב הבא נחבר גם את זה לשרת.
         greenBtn.addEventListener('click', function() {
             questionBox.style.display = "none";
             feedbackStatus.style.color = "green";
             feedbackStatus.innerText = "✔ נשלח: הכל מובן";
         });
 
-        // כפתור כחול - מתנדב לענות
+        // --- כפתור התנדבות ---
+        // שולח בקשת POST לשרת עם תעודת הזהות כדי שהמרצה יראה שהסטודנט רוצה לענות וייתן לו נקודה.
         blueBtn.addEventListener('click', async function() {
             const studentId = document.getElementById('studentId').value.trim();
             
@@ -166,14 +194,16 @@
             }
         });
 
-        // כפתור אדום - פותח תיבת טקסט
+        // --- הצגת תיבת כתיבת שאלה ---
+        // פותח את תיבת הטקסט כשלוחצים על הכפתור האדום.
         redBtn.addEventListener('click', function() {
             feedbackStatus.innerText = "";
             questionBox.style.display = "block";
             questionText.focus();
         });
 
-        // שליחת השאלה הכתובה
+        // --- שליחת השאלה לשרת ---
+        // לוקח את הטקסט מתיבת השאלה, שולח לשרת לצורך רישום נקודת השתתפות ולתצוגה אצל המרצה.
         sendQuestionBtn.addEventListener('click', async function() {
             const studentId = document.getElementById('studentId').value.trim();
             const qText = questionText.value.trim();

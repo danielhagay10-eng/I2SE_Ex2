@@ -22,7 +22,7 @@
         canvas { display: none; }
         #previewImage { width: 100%; max-width: 400px; border-radius: 5px; display: none; margin: 10px auto; }
         
-        /* טבלת פידבקים חיה */
+        /* טבלת פידבקים חיה (תוסתר כעת כי אנחנו עוברים למודל צף) */
         #feedbackSection { display: none; margin-top: 30px; text-align: right; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
@@ -30,6 +30,21 @@
         .status-question { background-color: #ffe6e6; }
         .status-volunteer { background-color: #e6f7ff; }
         .status-clear { background-color: #e6ffe6; }
+
+        /* --- עיצוב חדש: התראות צפות (Toasts) ל-30 שניות --- */
+        .toast-container { position: fixed; bottom: 20px; left: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: #333; color: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); font-size: 16px; opacity: 1; transition: opacity 1s; max-width: 300px; direction: rtl; }
+        .toast.hide { opacity: 0; }
+        .toast.question { border-right: 5px solid #dc3545; } /* פס אדום לשאלות */
+        .toast.understood { border-right: 5px solid #28a745; } /* פס ירוק להבנה */
+
+        /* --- עיצוב חדש: חלון צף (Modal) לטבלת המתנדבים --- */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 80%; max-width: 500px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); direction: rtl; }
+        .modal-content table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .modal-content th, .modal-content td { padding: 10px; border: 1px solid #ddd; }
+        .modal-content tr:hover { background-color: #f1f1f1; cursor: pointer; }
+        .close-modal-btn { margin-top: 20px; background: #dc3545; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%; }
     </style>
 </head>
 <body>
@@ -43,11 +58,11 @@
             <br>
             <button class="btn" id="startSessionBtn">פתח שיעור והצג QR</button>
         </div>
-<!-- שלב 2: הצגת QR וסגירת רישום -->
+
+        <!-- שלב 2: הצגת QR וסגירת רישום -->
         <div id="qrSection" style="display: none;">
             <h3 style="color: #007bff;">קוד השיעור: <span id="sessionTokenDisplay"></span></h3>
             
-            <!-- תמונת ה-QR שתיווצר אוטומטית -->
             <img id="qrImage" src="" alt="QR Code" style="margin: 15px auto; display: block; border: 5px solid white; box-shadow: 0px 0px 5px rgba(0,0,0,0.2);">
             
             <p>התלמידים יכולים כעת להירשם.</p>
@@ -62,7 +77,6 @@
             <button class="btn" id="uploadImageBtn">📁 העלה תמונה</button>
             <input type="file" id="fileInput" accept="image/*" style="display: none;">
 
-            <!-- אזור המצלמה -->
             <div id="cameraContainer">
                 <video id="videoElement" autoplay playsinline></video>
                 <br>
@@ -76,38 +90,40 @@
             <button class="btn btn-success" id="analyzeBtn" style="display: none; margin-top: 15px; width: 100%;">שלח לספירה אוטומטית</button>
             <h4 id="analysisResult" style="color: #28a745;"></h4>
         </div>
+    </div>
 
-        <!-- שלב 4: לוח הפידבקים של התלמידים -->
-        <div id="feedbackSection">
-            <h3>💬 חיווי בזמן אמת מהסטודנטים</h3>
+    <!-- --- אלמנטים חדשים לממשק צף --- -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="modal-overlay" id="volunteerModal">
+        <div class="modal-content">
+            <h3>🙋‍♂️ תלמידים שמוכנים לענות</h3>
             <table>
                 <thead>
                     <tr>
-                        <th>שם הסטודנט</th>
-                        <th>סטטוס</th>
-                        <th>פירוט / שאלה</th>
+                        <th>שם התלמיד</th>
+                        <th>פעולה</th>
                     </tr>
                 </thead>
-                <tbody id="feedbackTableBody">
-                    <!-- נתונים יתווספו לכאן דינמית -->
+                <tbody id="volunteerTableBody">
+                    <!-- השורות יתווספו כאן אוטומטית -->
                 </tbody>
             </table>
+            <button class="close-modal-btn" id="closeModalBtn">סגור טבלה ואפס מתנדבים</button>
         </div>
     </div>
+    <!-- -------------------------------- -->
 
     <script>
-        // --- אלמנטים ב-DOM ---
         const qrImage = document.getElementById('qrImage');
         const startSessionBtn = document.getElementById('startSessionBtn');
         const closeRegistrationBtn = document.getElementById('closeRegistrationBtn');
         const startSection = document.getElementById('startSection');
         const qrSection = document.getElementById('qrSection');
         const verificationSection = document.getElementById('verificationSection');
-        const feedbackSection = document.getElementById('feedbackSection');
         const sessionTokenDisplay = document.getElementById('sessionTokenDisplay');
         const courseName = document.getElementById('courseName');
 
-        // מצלמה והעלאה
         const openCameraBtn = document.getElementById('openCameraBtn');
         const uploadImageBtn = document.getElementById('uploadImageBtn');
         const fileInput = document.getElementById('fileInput');
@@ -121,19 +137,16 @@
         let currentSessionToken = "";
         let stream = null;
 
-        // --- 1. פתיחת שיעור ---
         startSessionBtn.addEventListener('click', async () => {
             if (!courseName.value) return alert('נא להזין שם קורס');
             
             currentSessionToken = Math.random().toString(36).substring(2, 10).toUpperCase();
             
-            // --- השורה החדשה: שליחת הקוד לשרת ---
             await fetch('http://127.0.0.1:8000/lecturer/start_session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: currentSessionToken })
             });
-            // ------------------------------------
 
             startSection.style.display = 'none';
             qrSection.style.display = 'block';
@@ -141,19 +154,27 @@
             
             qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${currentSessionToken}`;
             
-            feedbackSection.style.display = 'block';
-            startFetchingFeedback();
+            // התחלת בדיקה מהשרת להתראות צפות (ייכתב בשלב הבא)
         });
 
-        // --- 2. סגירת רישום ומעבר למצב צילום ---
-        closeRegistrationBtn.addEventListener('click', () => {
+       closeRegistrationBtn.addEventListener('click', async () => {
+            // שולחים לשרת פקודה לנעול את ה-QR ולעבור לסטטוס locked
+            try {
+                await fetch('http://127.0.0.1:8000/lecturer/lock_session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: currentSessionToken })
+                });
+            } catch (err) {
+                console.error(err);
+            }
+            
             qrSection.style.display = 'none';
             verificationSection.style.display = 'block';
         });
 
-        // --- 3. לוגיקת מצלמה ---
         openCameraBtn.addEventListener('click', async () => {
-            fileInput.value = ""; // איפוס קובץ אם נבחר
+            fileInput.value = ""; 
             previewImage.style.display = "none";
             
             try {
@@ -164,11 +185,9 @@
                 analyzeBtn.style.display = "none";
             } catch (err) {
                 alert("לא ניתן לגשת למצלמה. ודא שאישרת הרשאות דפדפן.");
-                console.error(err);
             }
         });
 
-        // צילום מהוידאו
         captureBtn.addEventListener('click', () => {
             canvasElement.width = videoElement.videoWidth;
             canvasElement.height = videoElement.videoHeight;
@@ -177,15 +196,13 @@
             previewImage.src = canvasElement.toDataURL('image/jpeg');
             previewImage.style.display = "block";
             
-            // עצירת המצלמה לאחר הצילום
             stream.getTracks().forEach(track => track.stop());
             cameraContainer.style.display = "none";
             analyzeBtn.style.display = "inline-block";
         });
 
-        // --- 4. לוגיקת העלאת קובץ ---
         uploadImageBtn.addEventListener('click', () => {
-            if (stream) stream.getTracks().forEach(track => track.stop()); // סגירת מצלמה אם פתוחה
+            if (stream) stream.getTracks().forEach(track => track.stop()); 
             cameraContainer.style.display = "none";
             fileInput.click();
         });
@@ -202,42 +219,64 @@
             }
         });
 
-        // שליחה לאנליזה בשרת (אלגוריתם זיהוי בני אדם)
         analyzeBtn.addEventListener('click', () => {
             analyzeBtn.innerText = "מנתח תמונה...";
             analyzeBtn.disabled = true;
             
-            // כאן נשלח את התמונה לשרת פייתון בשלב הבא
             setTimeout(() => {
                 document.getElementById('analysisResult').innerText = "✅ זוהו 15 תלמידים בתמונה. תואם לכמות הרשומים במערכת (15).";
                 analyzeBtn.style.display = "none";
             }, 2000);
         });
 
-        // --- 5. טבלת פידבקים בזמן אמת ---
-        function startFetchingFeedback() {
-            // סימולציה: נוסיף כמה שורות לדוגמה כדי לראות איך זה נראה
-            const tableBody = document.getElementById('feedbackTableBody');
+        // --- לוגיקה חדשה: הודעות צפות (Toasts) וטבלת מתנדבים (Modal) ---
+        
+        function showToast(message, type) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = message;
             
-            // כאן בעתיד נשתמש ב- fetch כדי למשוך את הנתונים מהשרת כל 3 שניות (setInterval)
-            tableBody.innerHTML = `
-                <tr class="status-question">
-                    <td>דניאל חגאי</td>
-                    <td>✋ שאלה</td>
-                    <td>לא הבנתי את ההבדל בין מחלקה לממשק, אפשר לחזור על זה?</td>
-                </tr>
-                <tr class="status-volunteer">
-                    <td>יעל כהן</td>
-                    <td>🙋‍♂️ מוכנה לענות</td>
-                    <td>-</td>
-                </tr>
-                <tr class="status-clear">
-                    <td>רון לוי</td>
-                    <td>👍 מובן</td>
-                    <td>-</td>
-                </tr>
-            `;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('hide');
+                setTimeout(() => toast.remove(), 1000);
+            }, 30000); 
         }
+
+        const volunteerModal = document.getElementById('volunteerModal');
+        const volunteerTableBody = document.getElementById('volunteerTableBody');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+
+        // פונקציה לבניית טבלת המתנדבים
+        function openVolunteerModal(studentsArray) {
+            volunteerTableBody.innerHTML = ''; 
+            studentsArray.forEach(student => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${student.name}</td>
+                    <td><button onclick="selectStudent('${student.name}')" class="btn" style="padding:5px;">תן רשות דיבור</button></td>
+                `;
+                volunteerTableBody.appendChild(tr);
+            });
+            volunteerModal.style.display = 'flex';
+        }
+
+        // בחירת תלמיד מהטבלה
+        window.selectStudent = function(name) {
+            alert(`בחרת ב-${name}. הטבלה תאופס עכשיו.`);
+            closeModal();
+        }
+
+        // סגירת טבלה
+        function closeModal() {
+            volunteerModal.style.display = 'none';
+            volunteerTableBody.innerHTML = ''; 
+        }
+        closeModalBtn.addEventListener('click', closeModal);
+
+       
     </script>
 </body>
 </html>

@@ -22,3 +22,15 @@ async def start_session(data: SessionStart):
     conn.commit()
     conn.close()
     return {"status": "success", "message": "Session created in DB"}
+class SessionLock(BaseModel):
+    token: str
+#נועל כפתורים לתלמידים 
+@lecturer_router.post("/lock_session")
+async def lock_session(data: SessionLock):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    # עדכון סטטוס השיעור לנעול / החלה ספירה
+    cursor.execute("UPDATE sessions SET status = 'locked' WHERE token = ?", (data.token,))
+    conn.commit()
+    conn.close()
+    return {"status": "success"}
