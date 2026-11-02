@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from server import get_db_connection, AttendanceMark
 from fastapi import APIRouter, HTTPException
+from server import get_db_connection
 
 # הגדרת הראוטר של התלמיד
 student_router = APIRouter(prefix="/student", tags=["Student"])
@@ -36,13 +37,29 @@ async def mark_attendance(data: AttendanceMark):
 
     return {"status": "success", "message": "Attendance marked successfully"}
 @student_router.post("/volunteer")
-async def volunteer(session_id: str, student_name: str):
-    # בשלב הבא נשמור את זה במסד הנתונים כדי להציג למרצה
-    print(f"Volunteer alert: {student_name} is ready to answer in session {session_id}")
+async def volunteer(session_id: str, student_id: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO participation (session_id, student_id, action_type, points) 
+        VALUES (?, ?, 'volunteer', 1)
+    ''', (session_id, student_id))
+    conn.commit()
+    conn.close()
     return {"status": "success", "message": "Volunteer registered"}
 
 @student_router.post("/ask_question")
-async def ask_question(session_id: str, student_name: str, question: str):
-    # בשלב הבא נשמור את זה במסד הנתונים כדי להציג למרצה
-    print(f"Question from {student_name} in session {session_id}: {question}")
+async def ask_question(session_id: str, student_id: str, question: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO participation (session_id, student_id, action_type, points) 
+        VALUES (?, ?, 'question', 1)
+    ''', (session_id, student_id))
+    
+    # כאן אפשר לשמור גם את תוכן השאלה עצמה לטבלה נפרדת בעתיד
+    print(f"Question from {student_id}: {question}")
+    
+    conn.commit()
+    conn.close()
     return {"status": "success", "message": "Question registered"}

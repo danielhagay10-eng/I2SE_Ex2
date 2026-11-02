@@ -150,15 +150,17 @@
 
         // כפתור כחול - מתנדב לענות
         blueBtn.addEventListener('click', async function() {
+            const studentId = document.getElementById('studentId').value.trim();
+            
             questionBox.style.display = "none";
             feedbackStatus.style.color = "#17a2b8";
             feedbackStatus.innerText = "🙋‍♂️ המרצה עודכן שאתה מוכן לענות!";
             
             try {
-                // נבנה את הנתיב הזה בשרת בשלב הבא
-                await fetch(`http://127.0.0.1:8000/student/volunteer?session_id=${currentSessionId}&student_name=${currentStudentName}`, {
+                await fetch(`http://127.0.0.1:8000/student/volunteer?session_id=${currentSessionId}&student_id=${studentId}`, {
                     method: 'POST'
                 });
+                alert('כל הכבוד! נצברה נקודת השתתפות 🙋‍♂️');
             } catch (e) {
                 console.error(e);
             }
@@ -173,7 +175,9 @@
 
         // שליחת השאלה הכתובה
         sendQuestionBtn.addEventListener('click', async function() {
+            const studentId = document.getElementById('studentId').value.trim();
             const qText = questionText.value.trim();
+            
             if (!qText) return;
 
             feedbackStatus.style.color = "red";
@@ -182,10 +186,10 @@
             questionText.value = ""; // איפוס הטקסט
 
             try {
-                // נעדכן את השרת לקבל את השאלה המלאה בשלב הבא
-                await fetch(`http://127.0.0.1:8000/student/ask_question?session_id=${currentSessionId}&student_name=${currentStudentName}&question=${encodeURIComponent(qText)}`, {
+                await fetch(`http://127.0.0.1:8000/student/ask_question?session_id=${currentSessionId}&student_id=${studentId}&question=${encodeURIComponent(qText)}`, {
                     method: 'POST'
                 });
+                alert('השאלה נשלחה בהצלחה! נצברה נקודת השתתפות ✋');
             } catch (e) {
                 console.error(e);
             }
