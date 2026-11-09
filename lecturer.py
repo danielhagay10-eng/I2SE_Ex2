@@ -1,36 +1,52 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from server import get_db_connection
+from student import live_alerts 
 
 lecturer_router = APIRouter(prefix="/lecturer")
 
 class SessionStart(BaseModel):
     token: str
+    lecturer_id: str
+    course_name: str
 
 @lecturer_router.post("/start_session")
 async def start_session(data: SessionStart):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # מכיוון שה-DB ריק, ניצור מרצה וקורס פיקטיביים רק כדי שהשיעור יוכל להיווצר
-    cursor.execute("INSERT OR IGNORE INTO users (id, first_name, last_name, role) VALUES ('111', 'מרצה', 'דמו', 'lecturer')")
-    cursor.execute("INSERT OR IGNORE INTO courses (id, course_name, lecturer_id) VALUES (1, 'קורס דמו', '111')")
+    # שמירת המרצה והקורס האמיתיים לפי הקלט
+    cursor.execute("INSERT OR IGNORE INTO users (id, first_name, last_name, role) VALUES (?, 'שם', 'מרצה', 'lecturer')", (data.lecturer_id,))
+    cursor.execute("INSERT INTO courses (course_name, lecturer_id) VALUES (?, ?)", (data.course_name, data.lecturer_id))
+    course_id = cursor.lastrowid
     
-    # שמירת קוד ה-QR של השיעור
-    cursor.execute("INSERT INTO sessions (course_id, token, status) VALUES (1, ?, 'active')", (data.token,))
+    # סטטוס התחלתי: רישום
+    cursor.execute("INSERT INTO sessions (course_id, token, status) VALUES (?, ?, 'registration')", (course_id, data.token))
     
     conn.commit()
     conn.close()
-    return {"status": "success", "message": "Session created in DB"}
-class SessionLock(BaseModel):
+    return {"status": "success", "message": "Session created"}
+
+class SessionStatusUpdate(BaseModel):
     token: str
-#נועל כפתורים לתלמידים 
-@lecturer_router.post("/lock_session")
-async def lock_session(data: SessionLock):
+    status: str
+
+# עדכון סטטוס השיעור לכל שלב שצריך
+@lecturer_router.post("/update_status")
+async def update_status(data: SessionStatusUpdate):
     conn = get_db_connection()
     cursor = conn.cursor()
-    # עדכון סטטוס השיעור לנעול / החלה ספירה
-    cursor.execute("UPDATE sessions SET status = 'locked' WHERE token = ?", (data.token,))
+    
+    cursor.execute("UPDATE sessions SET status = ? WHERE token = ?", (data.status, data.token))
     conn.commit()
     conn.close()
+    
     return {"status": "success"}
+
+@lecturer_router.get("/live_updates/{token}")
+async def get_live_updates(token: str):
+    if token in live_alerts:
+        updates = live_alerts[token]
+        live_alerts[token] = {"volunteers": [], "questions": []}
+        return updates
+    return {"volunteers": [], "questions": []}

@@ -12,39 +12,25 @@
         .btn { background: #007bff; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; margin: 5px; }
         .btn:hover { background: #0056b3; }
         .btn-danger { background: #dc3545; }
-        .btn-danger:hover { background: #c82333; }
         .btn-success { background: #28a745; }
         
-        /* אזור ספירת תלמידים / מצלמה */
         #verificationSection { display: none; margin-top: 20px; padding: 15px; border: 2px dashed #ccc; border-radius: 10px; background: #fafafa; }
         #cameraContainer { display: none; margin-top: 15px; }
         video { width: 100%; max-width: 400px; border-radius: 5px; border: 1px solid #ccc; }
         canvas { display: none; }
         #previewImage { width: 100%; max-width: 400px; border-radius: 5px; display: none; margin: 10px auto; }
         
-        /* טבלת פידבקים חיה (תוסתר כעת כי אנחנו עוברים למודל צף) */
-        #feedbackSection { display: none; margin-top: 30px; text-align: right; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
-        th { background-color: #007bff; color: white; }
-        .status-question { background-color: #ffe6e6; }
-        .status-volunteer { background-color: #e6f7ff; }
-        .status-clear { background-color: #e6ffe6; }
-
-        /* --- עיצוב חדש: התראות צפות (Toasts) ל-30 שניות --- */
         .toast-container { position: fixed; bottom: 20px; left: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
-        .toast { background: #333; color: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); font-size: 16px; opacity: 1; transition: opacity 1s; max-width: 300px; direction: rtl; }
+        .toast { background: #333; color: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); font-size: 16px; opacity: 1; transition: opacity 1s; max-width: 300px; direction: rtl; position: relative; }
         .toast.hide { opacity: 0; }
-        .toast.question { border-right: 5px solid #dc3545; } /* פס אדום לשאלות */
-        .toast.understood { border-right: 5px solid #28a745; } /* פס ירוק להבנה */
-
-        /* --- עיצוב חדש: חלון צף (Modal) לטבלת המתנדבים --- */
+        .toast.question { border-right: 5px solid #dc3545; }
+        .close-toast { cursor: pointer; position: absolute; left: 10px; top: 10px; font-weight: bold; color: #ff6b6b; font-size: 14px; }
+        
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; justify-content: center; align-items: center; }
-        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 80%; max-width: 500px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); direction: rtl; }
+        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 80%; max-width: 500px; text-align: center; direction: rtl; }
         .modal-content table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         .modal-content th, .modal-content td { padding: 10px; border: 1px solid #ddd; }
-        .modal-content tr:hover { background-color: #f1f1f1; cursor: pointer; }
-        .close-modal-btn { margin-top: 20px; background: #dc3545; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%; }
+        .close-modal-btn { margin-top: 20px; background: #dc3545; color: white; border: none; padding: 10px; width: 100%; }
     </style>
 </head>
 <body>
@@ -52,67 +38,48 @@
     <div class="dashboard">
         <h2>👨‍🏫 ניהול שיעור חכם</h2>
         
-        <!-- שלב 1: פתיחת שיעור -->
         <div id="startSection">
-            <input type="text" id="courseName" placeholder="שם הקורס (לדוגמה: מבני נתונים)" required>
-            <br>
+            <input type="text" id="lecturerId" placeholder="תעודת זהות מרצה" required><br>
+            <input type="text" id="courseName" placeholder="שם הקורס" required><br>
             <button class="btn" id="startSessionBtn">פתח שיעור והצג QR</button>
         </div>
 
-        <!-- שלב 2: הצגת QR וסגירת רישום -->
         <div id="qrSection" style="display: none;">
             <h3 style="color: #007bff;">קוד השיעור: <span id="sessionTokenDisplay"></span></h3>
-            
-            <img id="qrImage" src="" alt="QR Code" style="margin: 15px auto; display: block; border: 5px solid white; box-shadow: 0px 0px 5px rgba(0,0,0,0.2);">
-            
-            <p>התלמידים יכולים כעת להירשם.</p>
-            <button class="btn btn-danger" id="closeRegistrationBtn">סגור הרשמה והתחל ספירת תלמידים</button>
+            <img id="qrImage" src="" style="margin: 15px auto; display: block; border: 5px solid white;">
+            <button class="btn btn-danger" id="closeRegistrationBtn">סגור הרשמה ועבור לספירה</button>
         </div>
 
-        <!-- שלב 3: צילום/העלאת תמונה לספירה -->
         <div id="verificationSection">
-            <h3>📸 אימות נוכחות (ספירת תלמידים)</h3>
-            <p>בחר כיצד לספק תמונה של הכיתה לצורך השוואה מול כמות הנרשמים:</p>
+            <h3>📸 אימות נוכחות</h3>
             <button class="btn" id="openCameraBtn">📷 פתח מצלמה</button>
             <button class="btn" id="uploadImageBtn">📁 העלה תמונה</button>
             <input type="file" id="fileInput" accept="image/*" style="display: none;">
 
             <div id="cameraContainer">
-                <video id="videoElement" autoplay playsinline></video>
-                <br>
+                <video id="videoElement" autoplay playsinline></video><br>
                 <button class="btn btn-success" id="captureBtn" style="display: none;">צלם תמונה</button>
             </div>
             
             <canvas id="canvasElement"></canvas>
             <img id="previewImage" alt="תצוגה מקדימה">
-            
             <br>
-            <button class="btn btn-success" id="analyzeBtn" style="display: none; margin-top: 15px; width: 100%;">שלח לספירה אוטומטית</button>
+            <button class="btn btn-success" id="analyzeBtn" style="display: none; margin-top: 15px; width: 100%;">אשר ספירה ושחרר כפתורים לתלמידים</button>
             <h4 id="analysisResult" style="color: #28a745;"></h4>
+            
+            <button class="btn btn-danger" id="endSessionBtn" style="display: none; margin-top: 15px; width: 100%;">🛑 סיים שיעור</button>
         </div>
     </div>
 
-    <!-- --- אלמנטים חדשים לממשק צף --- -->
     <div class="toast-container" id="toastContainer"></div>
 
     <div class="modal-overlay" id="volunteerModal">
         <div class="modal-content">
-            <h3>🙋‍♂️ תלמידים שמוכנים לענות</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>שם התלמיד</th>
-                        <th>פעולה</th>
-                    </tr>
-                </thead>
-                <tbody id="volunteerTableBody">
-                    <!-- השורות יתווספו כאן אוטומטית -->
-                </tbody>
-            </table>
-            <button class="close-modal-btn" id="closeModalBtn">סגור טבלה ואפס מתנדבים</button>
+            <h3>🙋‍♂️ מתנדבים</h3>
+            <table><tbody id="volunteerTableBody"></tbody></table>
+            <button class="close-modal-btn" id="closeModalBtn">סגור טבלה</button>
         </div>
     </div>
-    <!-- -------------------------------- -->
 
     <script>
         const qrImage = document.getElementById('qrImage');
@@ -122,77 +89,65 @@
         const qrSection = document.getElementById('qrSection');
         const verificationSection = document.getElementById('verificationSection');
         const sessionTokenDisplay = document.getElementById('sessionTokenDisplay');
-        const courseName = document.getElementById('courseName');
-
-        const openCameraBtn = document.getElementById('openCameraBtn');
-        const uploadImageBtn = document.getElementById('uploadImageBtn');
-        const fileInput = document.getElementById('fileInput');
-        const cameraContainer = document.getElementById('cameraContainer');
-        const videoElement = document.getElementById('videoElement');
-        const canvasElement = document.getElementById('canvasElement');
-        const previewImage = document.getElementById('previewImage');
-        const captureBtn = document.getElementById('captureBtn');
-        const analyzeBtn = document.getElementById('analyzeBtn');
         
         let currentSessionToken = "";
         let stream = null;
+        let liveUpdatesInterval = null;
+
+        // פונקציה לשליחת עדכוני סטטוס לשרת
+        async function updateSessionStatus(status) {
+            await fetch('http://127.0.0.1:8000/lecturer/update_status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: currentSessionToken, status: status })
+            });
+        }
 
         startSessionBtn.addEventListener('click', async () => {
-            if (!courseName.value) return alert('נא להזין שם קורס');
+            const lecId = document.getElementById('lecturerId').value;
+            const cName = document.getElementById('courseName').value;
+            if (!lecId || !cName) return alert('נא למלא תעודת זהות ושם קורס');
             
             currentSessionToken = Math.random().toString(36).substring(2, 10).toUpperCase();
             
             await fetch('http://127.0.0.1:8000/lecturer/start_session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: currentSessionToken })
+                body: JSON.stringify({ token: currentSessionToken, lecturer_id: lecId, course_name: cName })
             });
 
             startSection.style.display = 'none';
             qrSection.style.display = 'block';
             sessionTokenDisplay.innerText = currentSessionToken;
-            
             qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${currentSessionToken}`;
-            
-            // התחלת בדיקה מהשרת להתראות צפות (ייכתב בשלב הבא)
         });
 
-       closeRegistrationBtn.addEventListener('click', async () => {
-            // שולחים לשרת פקודה לנעול את ה-QR ולעבור לסטטוס locked
-            try {
-                await fetch('http://127.0.0.1:8000/lecturer/lock_session', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: currentSessionToken })
-                });
-            } catch (err) {
-                console.error(err);
-            }
-            
+        // לחיצה על סגירת הרשמה (רק מעביר מצב ולא משחרר כפתורים)
+        closeRegistrationBtn.addEventListener('click', async () => {
+            await updateSessionStatus('counting');
             qrSection.style.display = 'none';
             verificationSection.style.display = 'block';
         });
 
-        openCameraBtn.addEventListener('click', async () => {
-            fileInput.value = ""; 
+        const videoElement = document.getElementById('videoElement');
+        const cameraContainer = document.getElementById('cameraContainer');
+        const captureBtn = document.getElementById('captureBtn');
+        const previewImage = document.getElementById('previewImage');
+        const canvasElement = document.getElementById('canvasElement');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+
+        document.getElementById('openCameraBtn').addEventListener('click', async () => {
             previewImage.style.display = "none";
-            
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                videoElement.srcObject = stream;
-                cameraContainer.style.display = "block";
-                captureBtn.style.display = "inline-block";
-                analyzeBtn.style.display = "none";
-            } catch (err) {
-                alert("לא ניתן לגשת למצלמה. ודא שאישרת הרשאות דפדפן.");
-            }
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            videoElement.srcObject = stream;
+            cameraContainer.style.display = "block";
+            captureBtn.style.display = "inline-block";
         });
 
         captureBtn.addEventListener('click', () => {
             canvasElement.width = videoElement.videoWidth;
             canvasElement.height = videoElement.videoHeight;
             canvasElement.getContext('2d').drawImage(videoElement, 0, 0);
-            
             previewImage.src = canvasElement.toDataURL('image/jpeg');
             previewImage.style.display = "block";
             
@@ -201,82 +156,76 @@
             analyzeBtn.style.display = "inline-block";
         });
 
-        uploadImageBtn.addEventListener('click', () => {
-            if (stream) stream.getTracks().forEach(track => track.stop()); 
-            cameraContainer.style.display = "none";
-            fileInput.click();
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    previewImage.src = event.target.result;
-                    previewImage.style.display = "block";
-                    analyzeBtn.style.display = "inline-block";
-                };
-                reader.readAsDataURL(e.target.files[0]);
-            }
-        });
-
-        analyzeBtn.addEventListener('click', () => {
-            analyzeBtn.innerText = "מנתח תמונה...";
+        // לחיצה על אישור תמונה (עכשיו משחרר כפתורים לתלמידים)
+        analyzeBtn.addEventListener('click', async () => {
+            analyzeBtn.innerText = "מעבד...";
             analyzeBtn.disabled = true;
             
-            setTimeout(() => {
-                document.getElementById('analysisResult').innerText = "✅ זוהו 15 תלמידים בתמונה. תואם לכמות הרשומים במערכת (15).";
+            setTimeout(async () => {
+                document.getElementById('analysisResult').innerText = "✅ נספרו 15 תלמידים. הכפתורים לתלמידים נפתחו.";
                 analyzeBtn.style.display = "none";
-            }, 2000);
+                document.getElementById('endSessionBtn').style.display = "inline-block";
+                
+                // שינוי הסטטוס להפעלה מלאה של השיעור
+                await updateSessionStatus('active_participation');
+                
+                // התחלת משיכת התראות
+                liveUpdatesInterval = setInterval(fetchLiveUpdates, 3000);
+            }, 1000);
         });
 
-        // --- לוגיקה חדשה: הודעות צפות (Toasts) וטבלת מתנדבים (Modal) ---
-        
+        // כפתור סיום שיעור
+        document.getElementById('endSessionBtn').addEventListener('click', async () => {
+            await updateSessionStatus('ended');
+            document.getElementById('endSessionBtn').style.display = "none";
+            document.getElementById('analysisResult').innerText = "🛑 השיעור נגמר בהצלחה.";
+            document.getElementById('analysisResult').style.color = "red";
+            if (liveUpdatesInterval) clearInterval(liveUpdatesInterval);
+        });
+
+        async function fetchLiveUpdates() {
+            try {
+                const res = await fetch(`http://127.0.0.1:8000/lecturer/live_updates/${currentSessionToken}`);
+                const data = await res.json();
+                if (data.questions && data.questions.length > 0) {
+                    data.questions.forEach(q => showToast(`<strong>${q.name}:</strong> ${q.text}`, 'question'));
+                }
+                if (data.volunteers && data.volunteers.length > 0) {
+                    const studentsArray = data.volunteers.map(name => ({ name: name }));
+                    openVolunteerModal(studentsArray);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // הודעה צפה עם כפתור מחיקה
         function showToast(message, type) {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
-            toast.innerHTML = message;
-            
+            toast.innerHTML = `<span class="close-toast" onclick="this.parentElement.remove()">✖</span><div style="margin-right:20px;">${message}</div>`;
             container.appendChild(toast);
-
             setTimeout(() => {
-                toast.classList.add('hide');
-                setTimeout(() => toast.remove(), 1000);
+                if(toast.parentElement) {
+                    toast.classList.add('hide');
+                    setTimeout(() => toast.remove(), 1000);
+                }
             }, 30000); 
         }
 
-        const volunteerModal = document.getElementById('volunteerModal');
-        const volunteerTableBody = document.getElementById('volunteerTableBody');
-        const closeModalBtn = document.getElementById('closeModalBtn');
-
-        // פונקציה לבניית טבלת המתנדבים
         function openVolunteerModal(studentsArray) {
-            volunteerTableBody.innerHTML = ''; 
+            const tbody = document.getElementById('volunteerTableBody');
+            tbody.innerHTML = ''; 
             studentsArray.forEach(student => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${student.name}</td>
-                    <td><button onclick="selectStudent('${student.name}')" class="btn" style="padding:5px;">תן רשות דיבור</button></td>
-                `;
-                volunteerTableBody.appendChild(tr);
+                tbody.innerHTML += `<tr><td>${student.name}</td><td><button onclick="selectStudent('${student.name}')" class="btn">תן דיבור</button></td></tr>`;
             });
-            volunteerModal.style.display = 'flex';
+            document.getElementById('volunteerModal').style.display = 'flex';
         }
 
-        // בחירת תלמיד מהטבלה
         window.selectStudent = function(name) {
-            alert(`בחרת ב-${name}. הטבלה תאופס עכשיו.`);
-            closeModal();
+            alert(`בחרת ב-${name}.`);
+            document.getElementById('volunteerModal').style.display = 'none';
         }
-
-        // סגירת טבלה
-        function closeModal() {
-            volunteerModal.style.display = 'none';
-            volunteerTableBody.innerHTML = ''; 
-        }
-        closeModalBtn.addEventListener('click', closeModal);
-
-       
+        document.getElementById('closeModalBtn').addEventListener('click', () => { document.getElementById('volunteerModal').style.display = 'none'; });
     </script>
 </body>
 </html>

@@ -136,23 +136,31 @@
                     feedbackStatus.innerText = "⏳ ממתין שהמרצה יסיים את הרישום...";
                     
                     // --- לוגיקת בדיקת הסטטוס כל 3 שניות ---
+                   // --- לוגיקת בדיקת הסטטוס כל 3 שניות ---
                     const statusInterval = setInterval(async () => {
                         try {
                             const res = await fetch(`http://127.0.0.1:8000/student/check_status/${qrToken}`);
                             const statusData = await res.json();
                             
-                            if (statusData.status === 'locked') {
-                                clearInterval(statusInterval); // עוצרים את הלולאה כי השיעור התחיל
-                                document.getElementById('actionButtons').style.display = "flex"; // מציגים כפתורים
+                            // המרצה אישר תמונה והתחיל שיעור
+                            if (statusData.status === 'active_participation') {
+                                document.getElementById('actionButtons').style.display = "flex"; 
                                 document.getElementById('waitingText').style.display = "none";
                                 feedbackStatus.style.color = "green";
                                 feedbackStatus.innerText = "✅ השיעור התחיל! ניתן להשתתף.";
+                            } 
+                            // המרצה לחץ על סיום שיעור
+                            else if (statusData.status === 'ended') {
+                                clearInterval(statusInterval); // עוצרים את הלולאה
+                                document.getElementById('actionButtons').style.display = "none"; 
+                                document.getElementById('questionBox').style.display = "none";
+                                feedbackStatus.style.color = "red";
+                                feedbackStatus.innerText = "🛑 השיעור נגמר.";
                             }
                         } catch (e) {
                             console.error(e);
                         }
-                    }, 3000); // 3000 מילישניות = 3 שניות
-
+                    }, 3000);
                 } else {
                     statusMessage.style.color = "red";
                     statusMessage.innerText = `❌ שגיאה: ${data.detail || "לא ניתן לרשום נוכחות"}`;
