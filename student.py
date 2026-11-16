@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from server import get_db_connection, AttendanceMark
+from queue import Queue
 
 # הגדרת הראוטר של התלמיד
 student_router = APIRouter(prefix="/student", tags=["Student"])
 
-# מאגר זמני להתראות חיות (עד שהמרצה יקרא אותן)
-live_alerts = {}
+# שימוש בתור (Queue) משותף כדי שהמרצה יוכל לקרוא את ההתראות ברצף
+live_alerts = Queue()
 
 @student_router.post("/mark_attendance")
 async def mark_attendance(data: AttendanceMark):
@@ -19,7 +20,7 @@ async def mark_attendance(data: AttendanceMark):
         conn.close()
         raise HTTPException(status_code=404, detail="קוד שיעור לא תקין")
 
-    # 2. הוספת הסטודנט לטבלת המשתמשים (אם הוא לא שם כבר)
+    # 2. הוספת הסטודנט לטבלת המשתמשים (האימייל מתפקד בתור id)
     cursor.execute('''
         INSERT OR IGNORE INTO users (id, first_name, last_name, role)
         VALUES (?, ?, ?, 'student')
@@ -31,7 +32,7 @@ async def mark_attendance(data: AttendanceMark):
         conn.close()
         raise HTTPException(status_code=400, detail="כבר נרשמת לשיעור זה")
 
-    # 4. רישום נוכחות בטבלת הנוכחות המעודכנת
+    # 4. רישום נוכחות בטבלת הנוכחות
     cursor.execute("INSERT INTO attendance (session_id, student_id) VALUES (?, ?)", (data.session_id, data.student_id))
     
     conn.commit()
@@ -58,12 +59,8 @@ async def volunteer(session_id: str, student_id: str):
     conn.commit()
     conn.close()
 
-    # הוספה לתור ההתראות של השיעור הזה
-    if session_id not in live_alerts:
-        live_alerts[session_id] = {"volunteers": [], "questions": []}
-    
-    if student_name not in live_alerts[session_id]["volunteers"]:
-        live_alerts[session_id]["volunteers"].append(student_name)
+    # דחיפת ההתראה לתור המשותף של המרצה
+    live_alerts.put({"type": "volunteer", "name": student_name})
 
     return {"status": "success"}
 
@@ -84,16 +81,20 @@ async def ask_question(session_id: str, student_id: str, question: str):
     conn.commit()
     conn.close()
 
-    # שמירת השאלה להתראה צפה
-    if session_id not in live_alerts:
-        live_alerts[session_id] = {"volunteers": [], "questions": []}
-    
-    live_alerts[session_id]["questions"].append({"name": student_name, "text": question})
+    # דחיפת השאלה לתור המשותף של המרצה
+    live_alerts.put({"type": "question", "name": student_name, "text": question})
 
     return {"status": "success"}
 
 
-# כאן לבדוק האם השיעור התחיל 
+@student_router.post("/understood")
+async def understood(session_id: str, student_id: str):
+    # שליחת חיווי סטטיסטי למרצה שהחומר הובן
+    live_alerts.put({"type": "understood"})
+    return {"status": "success"}
+
+
+# כאן בודקים האם השיעור התחיל
 @student_router.get("/check_status/{token}")
 async def check_status(token: str):
     conn = get_db_connection()

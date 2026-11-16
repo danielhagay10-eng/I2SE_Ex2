@@ -20,11 +20,13 @@
         canvas { display: none; }
         #previewImage { width: 100%; max-width: 400px; border-radius: 5px; display: none; margin: 10px auto; }
         
+        /* אזור ההתראות המרחפות בדפדפן */
         .toast-container { position: fixed; bottom: 20px; left: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
         .toast { background: #333; color: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); font-size: 16px; opacity: 1; transition: opacity 1s; max-width: 300px; direction: rtl; position: relative; }
         .toast.hide { opacity: 0; }
         .toast.question { border-right: 5px solid #dc3545; }
-        .close-toast { cursor: pointer; position: absolute; left: 10px; top: 10px; font-weight: bold; color: #ff6b6b; font-size: 14px; }
+        .toast.success { background: #28a745; border-right: 5px solid #1e7e34; }
+        .close-toast { cursor: pointer; position: absolute; left: 10px; top: 10px; font-weight: bold; color: #ffcccc; font-size: 14px; }
         
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 30px; border-radius: 10px; width: 80%; max-width: 500px; text-align: center; direction: rtl; }
@@ -39,7 +41,7 @@
         <h2>👨‍🏫 ניהול שיעור חכם</h2>
         
         <div id="startSection">
-            <input type="text" id="lecturerId" placeholder="תעודת זהות מרצה" required><br>
+            <input type="text" id="lecturerId" placeholder="כתובת אימייל מרצה" required><br>
             <input type="text" id="courseName" placeholder="שם הקורס" required><br>
             <button class="btn" id="startSessionBtn">פתח שיעור והצג QR</button>
         </div>
@@ -71,6 +73,7 @@
         </div>
     </div>
 
+    <!-- כאן יופיעו ההודעות הצפות! -->
     <div class="toast-container" id="toastContainer"></div>
 
     <div class="modal-overlay" id="volunteerModal">
@@ -82,6 +85,13 @@
     </div>
 
     <script>
+        // בקשת הרשאה להתראות מערכת מחוץ לדפדפן ברגע שהדף עולה
+        document.addEventListener('DOMContentLoaded', () => {
+            if (Notification.permission !== "denied" && Notification.permission !== "granted") {
+                Notification.requestPermission();
+            }
+        });
+
         const qrImage = document.getElementById('qrImage');
         const startSessionBtn = document.getElementById('startSessionBtn');
         const closeRegistrationBtn = document.getElementById('closeRegistrationBtn');
@@ -93,8 +103,8 @@
         let currentSessionToken = "";
         let stream = null;
         let liveUpdatesInterval = null;
+        let totalUnderstood = 0; // מונה סטטיסטיקה
 
-        // פונקציה לשליחת עדכוני סטטוס לשרת
         async function updateSessionStatus(status) {
             await fetch('http://127.0.0.1:8000/lecturer/update_status', {
                 method: 'POST',
@@ -106,7 +116,7 @@
         startSessionBtn.addEventListener('click', async () => {
             const lecId = document.getElementById('lecturerId').value;
             const cName = document.getElementById('courseName').value;
-            if (!lecId || !cName) return alert('נא למלא תעודת זהות ושם קורס');
+            if (!lecId || !cName) return alert('נא למלא אימייל ושם קורס');
             
             currentSessionToken = Math.random().toString(36).substring(2, 10).toUpperCase();
             
@@ -122,7 +132,6 @@
             qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${currentSessionToken}`;
         });
 
-        // לחיצה על סגירת הרשמה (רק מעביר מצב ולא משחרר כפתורים)
         closeRegistrationBtn.addEventListener('click', async () => {
             await updateSessionStatus('counting');
             qrSection.style.display = 'none';
@@ -156,25 +165,38 @@
             analyzeBtn.style.display = "inline-block";
         });
 
-        // לחיצה על אישור תמונה (עכשיו משחרר כפתורים לתלמידים)
+        const uploadImageBtn = document.getElementById('uploadImageBtn');
+        const fileInput = document.getElementById('fileInput');
+        uploadImageBtn.addEventListener('click', () => { fileInput.click(); });
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    previewImage.src = event.target.result;
+                    previewImage.style.display = "block";
+                    cameraContainer.style.display = "none";
+                    if (stream) { stream.getTracks().forEach(track => track.stop()); }
+                    analyzeBtn.style.display = "inline-block";
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
         analyzeBtn.addEventListener('click', async () => {
             analyzeBtn.innerText = "מעבד...";
             analyzeBtn.disabled = true;
             
             setTimeout(async () => {
-                document.getElementById('analysisResult').innerText = "✅ נספרו 15 תלמידים. הכפתורים לתלמידים נפתחו.";
+                document.getElementById('analysisResult').innerText = "✅ נספרו התלמידים. הכפתורים לתלמידים נפתחו.";
                 analyzeBtn.style.display = "none";
                 document.getElementById('endSessionBtn').style.display = "inline-block";
                 
-                // שינוי הסטטוס להפעלה מלאה של השיעור
                 await updateSessionStatus('active_participation');
-                
-                // התחלת משיכת התראות
                 liveUpdatesInterval = setInterval(fetchLiveUpdates, 3000);
             }, 1000);
         });
 
-        // כפתור סיום שיעור
         document.getElementById('endSessionBtn').addEventListener('click', async () => {
             await updateSessionStatus('ended');
             document.getElementById('endSessionBtn').style.display = "none";
@@ -183,27 +205,55 @@
             if (liveUpdatesInterval) clearInterval(liveUpdatesInterval);
         });
 
+        // פונקציה לשליחת התראה למערכת ההפעלה (Windows/Mac)
+        function sendDesktopNotification(title, body) {
+            if (Notification.permission === "granted") {
+                new Notification(title, { body: body });
+            }
+        }
+
+        // משיכת התראות בזמן אמת מהשרת
         async function fetchLiveUpdates() {
             try {
                 const res = await fetch(`http://127.0.0.1:8000/lecturer/live_updates/${currentSessionToken}`);
                 const data = await res.json();
+                
+                // 1. שאלות
                 if (data.questions && data.questions.length > 0) {
-                    data.questions.forEach(q => showToast(`<strong>${q.name}:</strong> ${q.text}`, 'question'));
+                    data.questions.forEach(q => {
+                        const msg = `${q.name}: ${q.text}`;
+                        showToast(`<strong>${q.name}:</strong> ${q.text}`, 'question');
+                        sendDesktopNotification("✋ שאלה חדשה מהכיתה!", msg); // התראה בווינדוס
+                    });
                 }
+                
+                // 2. מתנדבים
                 if (data.volunteers && data.volunteers.length > 0) {
                     const studentsArray = data.volunteers.map(name => ({ name: name }));
                     openVolunteerModal(studentsArray);
+                    sendDesktopNotification("🙋‍♂️ מתנדב חדש!", "יש תלמיד שמוכן לענות"); // התראה בווינדוס
+                }
+                
+                // 3. מובן (סטטיסטיקה מול כמות נוכחים)
+                if (data.understood_count && data.understood_count > 0) {
+                    totalUnderstood += data.understood_count;
+                    const totalInClass = data.total_attendance || 1; // שולף כמה נכחו
+                    const msg = `👍 ${totalUnderstood} מתוך ${totalInClass} תלמידים סימנו שהבינו`;
+                    
+                    showToast(msg, 'success'); // מציג הודעה ירוקה צפה שאפשר לסגור בדפדפן
+                    sendDesktopNotification("✅ עדכון הבנה", msg); // מקפיץ התראה בווינדוס
                 }
             } catch (e) { console.error(e); }
         }
 
-        // הודעה צפה עם כפתור מחיקה
         function showToast(message, type) {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             toast.innerHTML = `<span class="close-toast" onclick="this.parentElement.remove()">✖</span><div style="margin-right:20px;">${message}</div>`;
             container.appendChild(toast);
+            
+            // נעלם אוטומטית אחרי חצי דקה אם המרצה לא סגר בעצמו
             setTimeout(() => {
                 if(toast.parentElement) {
                     toast.classList.add('hide');

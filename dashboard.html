@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת ניהול למידה - דאשבורד מרצה</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; }
+        
+        .navbar { background-color: #004085; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .navbar h1 { margin: 0; font-size: 24px; }
+        .user-info { font-size: 16px; }
+
+        .container { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
+        
+        .start-lesson-card { background: linear-gradient(135deg, #28a745, #218838); color: white; border-radius: 10px; padding: 30px; text-align: center; cursor: pointer; transition: 0.2s; margin-bottom: 30px; box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3); }
+        .start-lesson-card:hover { transform: translateY(-5px); box-shadow: 0 6px 15px rgba(40, 167, 69, 0.5); }
+        .start-lesson-card h2 { margin: 0 0 10px 0; font-size: 28px; }
+        .start-lesson-card p { margin: 0; font-size: 18px; opacity: 0.9; }
+
+        .btn { background: #007bff; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; }
+        .btn:hover { background: #0056b3; }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        .card { background: white; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .card h3 { margin-top: 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; display: inline-block; }
+        
+        ul { list-style-type: none; padding: 0; margin: 0; }
+        li { padding: 15px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        li:last-child { border-bottom: none; }
+        
+        .badge { background-color: #007bff; color: white; padding: 5px 10px; border-radius: 20px; font-size: 12px; }
+        .btn-small { background-color: #6c757d; color: white; text-decoration: none; padding: 6px 12px; border-radius: 5px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h1>🎓 SmartLMS</h1>
+        <div class="user-info">שלום, מרצה | <a href="#" style="color: #ffcccc; text-decoration: none;">התנתק</a></div>
+    </div>
+
+    <div class="container">
+        <!-- כפתור פתיחת שיעור -->
+        <div class="start-lesson-card" onclick="window.location.href='lecturer.html'">
+            <h2>🟢 התחל שיעור חי עכשיו</h2>
+            <p>פתח חדר לייב, הצג קוד QR והתחל לקבל פידבקים מהכיתה</p>
+        </div>
+
+        <!-- העלאת אקסל -->
+        <div class="card" style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; border-right: 5px solid #17a2b8;">
+            <div style="text-align: right;">
+                <h3 style="margin: 0; border: none; padding: 0; color: #17a2b8;">📥 ייבוא רשימת סטודנטים</h3>
+                <p style="margin: 5px 0 0 0; color: #555;">העלה קובץ Excel. המערכת תסנן ותשמור רק את קבוצה 3.</p>
+            </div>
+            <div>
+                <input type="file" id="excelFile" accept=".xlsx" style="display: none;">
+                <button class="btn" style="background-color: #17a2b8;" onclick="document.getElementById('excelFile').click()">בחר קובץ והעלה</button>
+            </div>
+        </div>
+
+        <!-- נתוני אמת מהשרת -->
+        <div class="grid">
+            <div class="card">
+                <h3>📚 הקורסים שלי</h3>
+                <ul id="coursesList">
+                    <li style="color: #777;">טוען נתונים מהשרת...</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h3>📼 שיעורים אחרונים</h3>
+                <ul id="sessionsList">
+                    <li style="color: #777;">טוען נתונים מהשרת...</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. פונקציה להעלאת קובץ אקסל
+        document.getElementById('excelFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append("file", file);
+            
+            alert("מעבד את קובץ האקסל, אנא המתן...");
+            try {
+                const res = await fetch('http://127.0.0.1:8000/lecturer/upload_excel', { method: 'POST', body: formData });
+                const data = await res.json();
+                alert(data.message); 
+                window.location.reload(); // מרענן את הדף כדי להציג נתונים מעודכנים
+            } catch (err) {
+                alert("שגיאה בהעלאת הקובץ.");
+            }
+        });
+
+        // 2. פונקציה לשליפת נתוני הקורסים והשיעורים
+        async function loadDashboardData() {
+            // החלפנו את תעודת הזהות 111 באימייל של המרצה!
+            const lecturerEmail = "kfir@ariel.ac.il"; 
+            
+            try {
+                const res = await fetch(`http://127.0.0.1:8000/lecturer/my_data/${lecturerEmail}`);
+                const data = await res.json();
+                
+                // עדכון קורסים
+                const coursesList = document.getElementById('coursesList');
+                coursesList.innerHTML = '';
+                if (data.courses.length === 0) {
+                    coursesList.innerHTML = '<li style="color: #777;">עדיין לא נפתחו קורסים.</li>';
+                } else {
+                    data.courses.forEach(course => {
+                        coursesList.innerHTML += `
+                            <li>
+                                <span>${course.name}</span>
+                                <span class="badge">${course.students_count} רשומים לקורס</span>
+                            </li>`;
+                    });
+                }
+                
+                // עדכון היסטוריה
+                const sessionsList = document.getElementById('sessionsList');
+                sessionsList.innerHTML = '';
+                if (data.recent_sessions.length === 0) {
+                    sessionsList.innerHTML = '<li style="color: #777;">אין היסטוריית שיעורים.</li>';
+                } else {
+                    data.recent_sessions.forEach(session => {
+                        let statusText = session.status === 'ended' ? 'הסתיים' : 'פעיל';
+                        let statusColor = session.status === 'ended' ? '#777' : '#28a745';
+                        
+                        sessionsList.innerHTML += `
+                            <li>
+                                <div>
+                                    <strong>${session.course_name}</strong><br>
+                                    <span style="font-size: 13px; color: #777;">נוכחות בפועל: ${session.attendance_percent}% | <span style="color: ${statusColor};">סטטוס: ${statusText}</span></span>
+                                </div>
+                            </li>`;
+                    });
+                }
+            } catch (err) {
+                console.error("שגיאה בטעינת נתונים:", err);
+            }
+        }
+
+        window.onload = loadDashboardData;
+    </script>
+</body>
+</html>
