@@ -1,6 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from server import init_db
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
+
+# ייבוא מהקבצים שלך
+from server import init_db, get_db_connection
 from student import student_router
 from lecturer import lecturer_router
 
@@ -10,22 +14,23 @@ init_db()
 # יצירת אפליקציית השרת
 app = FastAPI(title="Teaching Tool API")
 
+# הגדרת תיקיית ה-HTML למסך ההתחברות
+templates = Jinja2Templates(directory="templates")
+
 # הגדרת CORS כדי לאפשר לדף ה-HTML לתקשר עם השרת בלי חסימות
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # מאפשר לכל כתובת (כמו Live Server) להתחבר
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # מאפשר את כל סוגי הבקשות (GET, POST וכו')
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# חיבור הקבצים (הראוטרים) של התלמיד והמרצה
-app.include_router(student_router)
-app.include_router(lecturer_router)
-from pydantic import BaseModel
-from fastapi import HTTPException
-from server import get_db_connection
-
+# --- נתיב דף הבית: מציג את מסך ההתחברות של גוגל ---
+@app.get("/")
+async def serve_login_page(request: Request):
+    return templates.TemplateResponse(request, "index.html")
+# --- נתיב ההתחברות הקיים שלך ---
 class LoginRequest(BaseModel):
     user_id: str
 
@@ -44,6 +49,6 @@ async def login(data: LoginRequest):
         
     return {"status": "success", "role": user['role'], "name": user['first_name']}
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the Web-based Teaching Tool"}
+# חיבור הקבצים (הראוטרים) של התלמיד והמרצה
+app.include_router(student_router)
+app.include_router(lecturer_router)

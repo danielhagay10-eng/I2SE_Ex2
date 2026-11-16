@@ -2,8 +2,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sqlite3
-
+from fastapi import FastAPI, Request
+from fastapi.templating import Jinja2Templates
 app = FastAPI()
+templates = Jinja2Templates(directory="templates")
+@app.get("/")
+async def serve_login_page(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 app.add_middleware(
     CORSMiddleware,

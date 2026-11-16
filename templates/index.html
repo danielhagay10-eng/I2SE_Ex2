@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartLMS - כניסה למערכת</title>
+    
+    <!-- הספריה הרשמית של גוגל להתחברות -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-box">
+        <h1>ברוכים הבאים</h1>
+        <p>אנא התחבר/י עם חשבון הגוגל שלך כדי להיכנס לשיעור</p>
+
+        <!-- הגדרות החיבור לגוגל (כאן שמים את ה-Client ID) -->
+        <div id="g_id_onload"
+             data-client_id="267484936152-52i3bh1887hvt4a0bvi2tb8csgemh1ff.apps.googleusercontent.com"
+             data-callback="handleCredentialResponse"
+             data-auto_prompt="false">
+        </div>
+        
+        <!-- כפתור ההתחברות המעוצב של גוגל -->
+        <div class="g_id_signin"
+             data-type="standard"
+             data-size="large"
+             data-theme="outline"
+             data-text="sign_in_with"
+             data-shape="rectangular"
+             data-logo_alignment="center">
+        </div>
+    </div>
+
+    <script>
+        // הפונקציה הזו מופעלת אוטומטית ברגע שהמשתמש בוחר חשבון גוגל
+        function handleCredentialResponse(response) {
+            console.log("Google Token Received!");
+            // response.credential מכיל את הטוקן המוצפן מגוגל עם האימייל של המשתמש
+            console.log(response.credential);
+            
+            alert("התחברת בהצלחה לגוגל! הטוקן מודפס בקונסול.");
+            
+            // בשלב הבא אנחנו נשלח את הטוקן הזה לשרת FastAPI שלנו 
+            // כדי לבדוק אם הוא מרצה או סטודנט שמופיע באקסל.
+        }
+    </script>
+
+</body>
+</html>
