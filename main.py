@@ -92,3 +92,7 @@ async def verify_google_token(data: GoogleTokenRequest):
 @app.get("/live_session.html")
 async def serve_live_session(request: Request):
  return templates.TemplateResponse(request, "lecturer.html")
+
+@app.get("/student.html")
+async def serve_student_live(request: Request):
+    return templates.TemplateResponse(request, "student.html")

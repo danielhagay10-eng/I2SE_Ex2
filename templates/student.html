@@ -4,13 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>רישום נוכחות - סטודנט</title>
+    <!-- ספרייה לסריקת QR דרך המצלמה -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 30px; }
         .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); display: inline-block; max-width: 400px; width: 100%; box-sizing: border-box; }
         input { width: 90%; padding: 12px; font-size: 16px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; text-align: center; }
-        .btn { background: #007bff; color: white; border: none; padding: 12px 20px; font-size: 18px; border-radius: 5px; cursor: pointer; width: 100%; }
+        .btn { background: #007bff; color: white; border: none; padding: 12px 20px; font-size: 18px; border-radius: 5px; cursor: pointer; width: 100%; margin-bottom: 10px; }
         .btn:hover { background: #0056b3; }
         .btn:disabled { background: #cccccc; cursor: not-allowed; }
+        .btn-scan { background: #28a745; }
+        .btn-scan:hover { background: #218838; }
+        .btn-stop-scan { background: #dc3545; }
+        .btn-stop-scan:hover { background: #c82333; }
+        
+        #qrReaderContainer { display: none; margin: 15px 0; }
+        #qrReader { width: 100%; border-radius: 8px; overflow: hidden; }
         
         .feedback-container { display: none; margin-top: 20px; }
         .action-buttons { display: flex; justify-content: space-between; gap: 10px; margin-top: 15px; }
@@ -30,12 +39,22 @@
         <h2>🎓 רישום נוכחות לשיעור</h2>
         
         <div id="formSection">
-            <p>הכנס את פרטיך האישיים ואת קוד ה-QR:</p>
+            <h3 id="studentGreeting" style="color: #004085; margin-bottom: 5px;">שלום!</h3>
+            <p style="color: #555; margin-top: 0;">סרוק את קוד ה-QR מהלוח או הזן אותו ידנית:</p>
+
+            <!-- כפתור לפתיחת סורק המצלמה -->
+            <button type="button" class="btn btn-scan" id="startScanBtn">📷 סרוק QR במצלמה</button>
+
+            <!-- אזור המצלמה לסריקה -->
+            <div id="qrReaderContainer">
+                <div id="qrReader"></div>
+                <button type="button" class="btn btn-stop-scan" id="stopScanBtn" style="margin-top: 10px;">✖ סגור סורק</button>
+            </div>
+
+            <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+
             <form id="attendanceForm">
-               <input type="email" id="studentId" placeholder="כתובת אימייל (לדוגמה: dani@gmail.com)" required>
-                <input type="text" id="firstName" placeholder="שם פרטי" required><br>
-                <input type="text" id="lastName" placeholder="שם משפחה" required><br>
-                <input type="text" id="qrToken" placeholder="הכנס קוד טוקן (QR)" required><br>
+                <input type="text" id="qrToken" placeholder="או הכנס קוד טוקן ידנית" required><br>
                 <button type="button" class="btn" id="submitBtn">שלח נוכחות</button>
             </form>
         </div>
@@ -45,7 +64,7 @@
             <p id="waitingText">ממתין לתחילת השיעור ולעדכונים מהמרצה...</p>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
             
-           <div class="action-buttons" id="actionButtons" style="display: none;">
+            <div class="action-buttons" id="actionButtons" style="display: none;">
                 <button class="btn-green" id="greenBtn">👍 מובן</button>
                 <button class="btn-blue" id="blueBtn">🙋‍♂️ מוכן לענות</button>
                 <button class="btn-red" id="redBtn">✋ שאלה</button>
@@ -63,10 +82,18 @@
     </div>
 
     <script>
+        // שליפת פרטי הסטודנט מההתחברות (עם ברירת מחדל אם עדיין לא נשמרו ב-localStorage)
+        const studentEmail = localStorage.getItem('user_email') || localStorage.getItem('student_email') || 'student@ariel.ac.il';
+        const fullName = localStorage.getItem('user_name') || localStorage.getItem('student_name') || 'סטודנט לדוגמה';
+        const nameParts = fullName.trim().split(' ');
+        const studentFirstName = nameParts[0] || 'סטודנט';
+        const studentLastName = nameParts.slice(1).join(' ') || 'אריאל';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('studentGreeting').innerText = `שלום, ${fullName} 👋`;
+        });
+
         const submitBtn = document.getElementById('submitBtn');
-        const studentIdInput = document.getElementById('studentId');
-        const firstNameInput = document.getElementById('firstName');
-        const lastNameInput = document.getElementById('lastName');
         const qrTokenInput = document.getElementById('qrToken');
         const statusMessage = document.getElementById('statusMessage');
         
@@ -80,26 +107,66 @@
         const sendQuestionBtn = document.getElementById('sendQuestionBtn');
         const feedbackStatus = document.getElementById('feedbackStatus');
 
-        let currentStudentName = "";
+        const startScanBtn = document.getElementById('startScanBtn');
+        const stopScanBtn = document.getElementById('stopScanBtn');
+        const qrReaderContainer = document.getElementById('qrReaderContainer');
+
         let currentSessionId = "";
+        let html5QrCode = null;
+
+        // --- הפעלת סורק ה-QR ---
+        startScanBtn.addEventListener('click', async () => {
+            statusMessage.innerText = "";
+            qrReaderContainer.style.display = "block";
+            startScanBtn.style.display = "none";
+
+            html5QrCode = new Html5Qrcode("qrReader");
+            try {
+                await html5QrCode.start(
+                    { facingMode: "environment" }, // מצלמה אחורית בטלפון, או ברירת מחדל במחשב
+                    { fps: 10, qrbox: { width: 220, height: 220 } },
+                    async (decodedText) => {
+                        // נקלט קוד QR! עוצרים מצלמה, ממלאים את השדה ושולחים אוטומטית
+                        await stopQrScanner();
+                        qrTokenInput.value = decodedText.trim().toUpperCase();
+                        submitBtn.click();
+                    },
+                    () => {
+                        // מתעלמים משגיאות פריימים ריקים בזמן הסריקה
+                    }
+                );
+            } catch (err) {
+                console.error(err);
+                statusMessage.style.color = "red";
+                statusMessage.innerText = "❌ לא ניתן לפתוח את המצלמה. ודא שנתת הרשאה בדפדפן.";
+                qrReaderContainer.style.display = "none";
+                startScanBtn.style.display = "block";
+            }
+        });
+
+        async function stopQrScanner() {
+            if (html5QrCode) {
+                try {
+                    await html5QrCode.stop();
+                    html5QrCode.clear();
+                } catch (e) {
+                    console.error(e);
+                }
+                html5QrCode = null;
+            }
+            qrReaderContainer.style.display = "none";
+            startScanBtn.style.display = "block";
+        }
+
+        stopScanBtn.addEventListener('click', stopQrScanner);
 
         // --- שליחת פרטי הנוכחות ובדיקת תחילת השיעור ---
         submitBtn.addEventListener('click', async function() {
-            const studentId = studentIdInput.value.trim();
-            const firstName = firstNameInput.value.trim();
-            const lastName = lastNameInput.value.trim();
-            const qrToken = qrTokenInput.value.trim();
+            const qrToken = qrTokenInput.value.trim().toUpperCase();
 
-            if (!studentId || !firstName || !lastName || !qrToken) {
+            if (!qrToken) {
                 statusMessage.style.color = "red";
-                statusMessage.innerText = "נא למלא את כל השדות!";
-                return;
-            }
-
-            // עדכון הלוגיקה: בדיקת אימייל תקין במקום תעודת זהות
-            if (!studentId.includes('@')) {
-                statusMessage.style.color = "red";
-                statusMessage.innerText = "❌ אנא הזן כתובת אימייל תקינה!";
+                statusMessage.innerText = "נא לסרוק או להזין את קוד ה-QR!";
                 return;
             }
 
@@ -108,22 +175,20 @@
             statusMessage.innerText = "";
 
             try {
-                // שלב ראשון: סימון הנוכחות
-                const response = await fetch('http://127.0.0.1:8000/student/mark_attendance', {
+                const response = await fetch('/student/mark_attendance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         session_id: qrToken, 
-                        student_id: studentId,
-                        first_name: firstName,
-                        last_name: lastName
+                        student_id: studentEmail,
+                        first_name: studentFirstName,
+                        last_name: studentLastName
                     })
                 });
 
                 const data = await response.json();
                 
                 if (response.ok) {
-                    currentStudentName = firstName + " " + lastName;
                     currentSessionId = qrToken;
                     
                     formSection.style.display = "none";
@@ -136,23 +201,26 @@
                     // --- לוגיקת בדיקת הסטטוס כל 3 שניות ---
                     const statusInterval = setInterval(async () => {
                         try {
-                            const res = await fetch(`http://127.0.0.1:8000/student/check_status/${qrToken}`);
+                            const res = await fetch(`/student/check_status/${qrToken}`);
                             const statusData = await res.json();
                             
-                            // המרצה אישר תמונה והתחיל שיעור
                             if (statusData.status === 'active_participation') {
                                 document.getElementById('actionButtons').style.display = "flex"; 
                                 document.getElementById('waitingText').style.display = "none";
                                 feedbackStatus.style.color = "green";
-                                feedbackStatus.innerText = "✅ השיעור התחיל! ניתן להשתתף.";
+                                feedbackStatus.innerText = "✅ השיעור פעיל! ניתן להשתתף.";
                             } 
-                            // המרצה לחץ על סיום שיעור
-                            else if (statusData.status === 'ended') {
-                                clearInterval(statusInterval); // עוצרים את הלולאה
+                            else if (statusData.status === 'muted') {
                                 document.getElementById('actionButtons').style.display = "none"; 
                                 document.getElementById('questionBox').style.display = "none";
-                                feedbackStatus.style.color = "red";
-                                feedbackStatus.innerText = "🛑 השיעור נגמר.";
+                                document.getElementById('waitingText').style.display = "none";
+                                feedbackStatus.style.color = "#dc3545";
+                                feedbackStatus.innerText = "🔕 המרצה השתיק כרגע את כפתורי ההשתתפות.";
+                            }
+                            else if (statusData.status === 'ended') {
+                                clearInterval(statusInterval);
+                                alert('השיעור הסתיים! חוזר לדשבורד.');
+                                window.location.href = '/student_dashboard.html';
                             }
                         } catch (e) {
                             console.error(e);
@@ -174,31 +242,27 @@
 
         // --- כפתור מובן ---
         greenBtn.addEventListener('click', async function() {
-            const studentId = document.getElementById('studentId').value.trim();
-            
             questionBox.style.display = "none";
             feedbackStatus.style.color = "green";
             feedbackStatus.innerText = "✔ נשלח: הכל מובן";
             
             try {
-                // שולח למרצה חיווי שהחומר הובן
-                await fetch(`http://127.0.0.1:8000/student/understood?session_id=${currentSessionId}&student_id=${studentId}`, {
+                await fetch(`/student/understood?session_id=${currentSessionId}&student_id=${encodeURIComponent(studentEmail)}`, {
                     method: 'POST'
                 });
             } catch (e) {
                 console.error(e);
             }
         });
+
         // --- כפתור התנדבות ---
         blueBtn.addEventListener('click', async function() {
-            const studentId = document.getElementById('studentId').value.trim();
-            
             questionBox.style.display = "none";
             feedbackStatus.style.color = "#17a2b8";
             feedbackStatus.innerText = "🙋‍♂️ המרצה עודכן שאתה מוכן לענות!";
             
             try {
-                await fetch(`http://127.0.0.1:8000/student/volunteer?session_id=${currentSessionId}&student_id=${studentId}`, {
+                await fetch(`/student/volunteer?session_id=${currentSessionId}&student_id=${encodeURIComponent(studentEmail)}`, {
                     method: 'POST'
                 });
                 alert('כל הכבוד! נצברה נקודת השתתפות 🙋‍♂️');
@@ -216,18 +280,16 @@
 
         // --- שליחת השאלה לשרת ---
         sendQuestionBtn.addEventListener('click', async function() {
-            const studentId = document.getElementById('studentId').value.trim();
             const qText = questionText.value.trim();
-            
             if (!qText) return;
 
             feedbackStatus.style.color = "red";
             feedbackStatus.innerText = "✋ שאלתך נשלחה למרצה.";
             questionBox.style.display = "none";
-            questionText.value = ""; // איפוס הטקסט
+            questionText.value = "";
 
             try {
-                await fetch(`http://127.0.0.1:8000/student/ask_question?session_id=${currentSessionId}&student_id=${studentId}&question=${encodeURIComponent(qText)}`, {
+                await fetch(`/student/ask_question?session_id=${currentSessionId}&student_id=${encodeURIComponent(studentEmail)}&question=${encodeURIComponent(qText)}`, {
                     method: 'POST'
                 });
                 alert('השאלה נשלחה בהצלחה! נצברה נקודת השתתפות ✋');

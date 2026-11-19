@@ -1,7 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, UploadFile, File
 from pydantic import BaseModel
-from fastapi import UploadFile, File
 import pandas as pd
+import base64
+import cv2
+import numpy as np
 import io
 
 lecturer_router = APIRouter(prefix="/lecturer")
@@ -14,6 +16,10 @@ class SessionStart(BaseModel):
 class SessionStatusUpdate(BaseModel):
     token: str
     status: str
+
+class ImageRequest(BaseModel):
+    image: str
+    token: str
 
 @lecturer_router.post("/start_session")
 async def start_session(data: SessionStart):
@@ -73,6 +79,7 @@ async def live_updates(token: str):
         "understood_count": understood_count,
         "total_attendance": total_attendance
     }
+
 @lecturer_router.post("/upload_excel")
 async def upload_excel(file: UploadFile = File(...)):
     contents = await file.read()
@@ -141,3 +148,36 @@ async def get_my_data(lecturer_id: str):
     
     conn.close()
     return {"courses": courses_list, "recent_sessions": sessions_list}
+
+@lecturer_router.post("/count_faces")
+async def count_faces(data: ImageRequest):
+    from server import get_db_connection
+
+    # 1. פענוח התמונה וספירת פרצופים
+    encoded = data.image.split(",", 1)[1] if "," in data.image else data.image
+    img_bytes = base64.b64decode(encoded)
+    np_arr = np.frombuffer(img_bytes, np.uint8)
+    img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+    if img is None:
+        return {"face_count": 0, "scanned_count": 0, "error": "לא ניתן לפענח את התמונה"}
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    face_cascade = cv2.CascadeClassifier(
+        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    )
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+    face_count = len(faces)
+
+    # 2. שליפת כמות סריקות ה-QR לשיעור הזה מה-DB
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT COUNT(*) as cnt FROM attendance WHERE session_token = ?", (data.token,))
+        scanned_count = cursor.fetchone()["cnt"]
+    except Exception:
+        cursor.execute("SELECT COUNT(*) as cnt FROM attendance WHERE session_id = ?", (data.token,))
+        scanned_count = cursor.fetchone()["cnt"]
+    conn.close()
+
+    return {"face_count": face_count, "scanned_count": scanned_count}

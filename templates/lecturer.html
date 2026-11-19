@@ -8,13 +8,13 @@
         body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 20px; }
         .dashboard { background: white; padding: 25px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); max-width: 800px; margin: auto; }
         
-        input[type="text"] { width: 60%; padding: 10px; font-size: 16px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; }
         .btn { background: #007bff; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; margin: 5px; }
         .btn:hover { background: #0056b3; }
         .btn-danger { background: #dc3545; }
         .btn-success { background: #28a745; }
         
         #verificationSection { display: none; margin-top: 20px; padding: 15px; border: 2px dashed #ccc; border-radius: 10px; background: #fafafa; }
+        #liveControlPanel { display: none; margin-top: 20px; padding: 20px; border: 2px solid #007bff; border-radius: 10px; background: #f8f9fa; }
         #cameraContainer { display: none; margin-top: 15px; }
         video { width: 100%; max-width: 400px; border-radius: 5px; border: 1px solid #ccc; }
         canvas { display: none; }
@@ -41,9 +41,9 @@
         <h2>👨‍🏫 ניהול שיעור חכם</h2>
         
         <div id="startSection">
-            <input type="text" id="lecturerId" placeholder="כתובת אימייל מרצה" required><br>
-            <input type="text" id="courseName" placeholder="שם הקורס" required><br>
-            <button class="btn" id="startSessionBtn">פתח שיעור והצג QR</button>
+            <h3 id="lecturerGreeting" style="color: #004085; margin-bottom: 5px;">שלום!</h3>
+            <p id="courseSubtitle" style="color: #555; margin-top: 0; margin-bottom: 20px;"></p>
+            <button class="btn btn-success" id="startSessionBtn" style="font-size: 18px; padding: 12px 30px;">🟢 פתח שיעור והצג QR</button>
         </div>
 
         <div id="qrSection" style="display: none;">
@@ -67,9 +67,23 @@
             <img id="previewImage" alt="תצוגה מקדימה">
             <br>
             <button class="btn btn-success" id="analyzeBtn" style="display: none; margin-top: 15px; width: 100%;">אשר ספירה ושחרר כפתורים לתלמידים</button>
-            <h4 id="analysisResult" style="color: #28a745;"></h4>
-            
-            <button class="btn btn-danger" id="endSessionBtn" style="display: none; margin-top: 15px; width: 100%;">🛑 סיים שיעור</button>
+        </div>
+
+        <!-- לוח בקרה לשיעור פעיל (מופיע במקום התמונה אחרי הספירה) -->
+        <div id="liveControlPanel">
+            <h3 style="color: #004085; margin-top: 0;">🎛️ לוח בקרה לשיעור פעיל</h3>
+            <h4 id="liveAttendanceSummary" style="margin-bottom: 20px;"></h4>
+
+            <div style="margin: 20px 0; padding: 15px; background: white; border-radius: 8px; border: 1px solid #ddd;">
+                <p id="buttonsStatusText" style="font-weight: bold; color: #28a745; font-size: 18px; margin-top: 0;">
+                    🔔 כפתורי התלמידים פעילים כעת
+                </p>
+                <button class="btn" id="toggleMuteBtn" style="background: #ffc107; color: black; font-weight: bold; width: 100%;">
+                    🔕 השתק כפתורי תלמידים (מניעת הפרעות)
+                </button>
+            </div>
+
+            <button class="btn btn-danger" id="endSessionBtn" style="margin-top: 15px; width: 100%;">🛑 סיים שיעור</button>
         </div>
     </div>
 
@@ -85,8 +99,15 @@
     </div>
 
     <script>
-        // בקשת הרשאה להתראות מערכת מחוץ לדפדפן ברגע שהדף עולה
+        // שליפת פרטי המרצה והקורס מההתחברות (עם ברירת מחדל אם עדיין לא נשמרו ב-localStorage)
+        const lecturerName = localStorage.getItem('user_name') || localStorage.getItem('lecturer_name') || 'מרצה';
+        const lecturerEmail = localStorage.getItem('user_email') || localStorage.getItem('lecturer_email') || 'lecturer@ariel.ac.il';
+        const currentCourseName = localStorage.getItem('course_name') || 'מבוא לחישוב';
+
         document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('lecturerGreeting').innerText = `שלום, ${lecturerName} 👋`;
+            document.getElementById('courseSubtitle').innerText = `קורס: ${currentCourseName}`;
+
             if (Notification.permission !== "denied" && Notification.permission !== "granted") {
                 Notification.requestPermission();
             }
@@ -98,15 +119,17 @@
         const startSection = document.getElementById('startSection');
         const qrSection = document.getElementById('qrSection');
         const verificationSection = document.getElementById('verificationSection');
+        const liveControlPanel = document.getElementById('liveControlPanel');
         const sessionTokenDisplay = document.getElementById('sessionTokenDisplay');
         
         let currentSessionToken = "";
         let stream = null;
         let liveUpdatesInterval = null;
-        let totalUnderstood = 0; // מונה סטטיסטיקה
+        let totalUnderstood = 0;
+        let isButtonsMuted = false;
 
         async function updateSessionStatus(status) {
-            await fetch('http://127.0.0.1:8000/lecturer/update_status', {
+            await fetch('/lecturer/update_status', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: currentSessionToken, status: status })
@@ -114,16 +137,16 @@
         }
 
         startSessionBtn.addEventListener('click', async () => {
-            const lecId = document.getElementById('lecturerId').value;
-            const cName = document.getElementById('courseName').value;
-            if (!lecId || !cName) return alert('נא למלא אימייל ושם קורס');
-            
             currentSessionToken = Math.random().toString(36).substring(2, 10).toUpperCase();
             
-            await fetch('http://127.0.0.1:8000/lecturer/start_session', {
+            await fetch('/lecturer/start_session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: currentSessionToken, lecturer_id: lecId, course_name: cName })
+                body: JSON.stringify({
+                    token: currentSessionToken,
+                    lecturer_id: lecturerEmail,
+                    course_name: currentCourseName
+                })
             });
 
             startSection.style.display = 'none';
@@ -184,64 +207,104 @@
         });
 
         analyzeBtn.addEventListener('click', async () => {
-            analyzeBtn.innerText = "מעבד...";
+            analyzeBtn.innerText = "מנתח תמונה וסופר פרצופים...";
             analyzeBtn.disabled = true;
-            
-            setTimeout(async () => {
-                document.getElementById('analysisResult').innerText = "✅ נספרו התלמידים. הכפתורים לתלמידים נפתחו.";
-                analyzeBtn.style.display = "none";
-                document.getElementById('endSessionBtn').style.display = "inline-block";
-                
+
+            try {
+                const res = await fetch('/lecturer/count_faces', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: previewImage.src,
+                        token: currentSessionToken
+                    })
+                });
+
+                if (!res.ok) {
+                    throw new Error(`שגיאת שרת: ${res.status}`);
+                }
+
+                const data = await res.json();
+
+                // מעלים את אזור המצלמה והתמונה ופותח את לוח הבקרה
+                verificationSection.style.display = "none";
+                liveControlPanel.style.display = "block";
+
+                const summaryEl = document.getElementById('liveAttendanceSummary');
+                summaryEl.innerText = `✅ זוהו ${data.face_count} פרצופים בתמונה לעומת ${data.scanned_count} סריקות QR.`;
+                summaryEl.style.color = data.scanned_count > data.face_count ? "#dc3545" : "#28a745";
+
                 await updateSessionStatus('active_participation');
                 liveUpdatesInterval = setInterval(fetchLiveUpdates, 3000);
-            }, 1000);
+            } catch (err) {
+                console.error(err);
+                alert("שגיאה בניתוח התמונה: " + err.message);
+                analyzeBtn.innerText = "אשר ספירה ושחרר כפתורים לתלמידים";
+                analyzeBtn.disabled = false;
+            }
         });
 
-        document.getElementById('endSessionBtn').addEventListener('click', async () => {
+        // כפתור השתקה / הפעלה של כפתורי התלמידים
+        document.getElementById('toggleMuteBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('toggleMuteBtn');
+            const statusText = document.getElementById('buttonsStatusText');
+            isButtonsMuted = !isButtonsMuted;
+
+            if (isButtonsMuted) {
+                await updateSessionStatus('muted');
+                statusText.innerText = "🔕 כפתורי התלמידים מושתקים כעת";
+                statusText.style.color = "#dc3545";
+                btn.innerText = "🔔 הפעל מחדש כפתורי תלמידים";
+                btn.style.background = "#28a745";
+                btn.style.color = "white";
+            } else {
+                await updateSessionStatus('active_participation');
+                statusText.innerText = "🔔 כפתורי התלמידים פעילים כעת";
+                statusText.style.color = "#28a745";
+                btn.innerText = "🔕 השתק כפתורי תלמידים (מניעת הפרעות)";
+                btn.style.background = "#ffc107";
+                btn.style.color = "black";
+            }
+        });
+
+       document.getElementById('endSessionBtn').addEventListener('click', async () => {
             await updateSessionStatus('ended');
-            document.getElementById('endSessionBtn').style.display = "none";
-            document.getElementById('analysisResult').innerText = "🛑 השיעור נגמר בהצלחה.";
-            document.getElementById('analysisResult').style.color = "red";
             if (liveUpdatesInterval) clearInterval(liveUpdatesInterval);
+            window.location.href = '/course_dashboard.html';
         });
 
-        // פונקציה לשליחת התראה למערכת ההפעלה (Windows/Mac)
         function sendDesktopNotification(title, body) {
             if (Notification.permission === "granted") {
                 new Notification(title, { body: body });
             }
         }
 
-        // משיכת התראות בזמן אמת מהשרת
         async function fetchLiveUpdates() {
             try {
-                const res = await fetch(`http://127.0.0.1:8000/lecturer/live_updates/${currentSessionToken}`);
+                const res = await fetch(`/lecturer/live_updates/${currentSessionToken}`);
                 const data = await res.json();
                 
-                // 1. שאלות
                 if (data.questions && data.questions.length > 0) {
                     data.questions.forEach(q => {
                         const msg = `${q.name}: ${q.text}`;
                         showToast(`<strong>${q.name}:</strong> ${q.text}`, 'question');
-                        sendDesktopNotification("✋ שאלה חדשה מהכיתה!", msg); // התראה בווינדוס
+                        sendDesktopNotification("✋ שאלה חדשה מהכיתה!", msg);
                     });
                 }
                 
-                // 2. מתנדבים
                 if (data.volunteers && data.volunteers.length > 0) {
                     const studentsArray = data.volunteers.map(name => ({ name: name }));
                     openVolunteerModal(studentsArray);
-                    sendDesktopNotification("🙋‍♂️ מתנדב חדש!", "יש תלמיד שמוכן לענות"); // התראה בווינדוס
+                    sendDesktopNotification("🙋‍♂️ מתנדב חדש!", "יש תלמיד שמוכן לענות");
                 }
                 
-                // 3. מובן (סטטיסטיקה מול כמות נוכחים)
                 if (data.understood_count && data.understood_count > 0) {
                     totalUnderstood += data.understood_count;
-                    const totalInClass = data.total_attendance || 1; // שולף כמה נכחו
+                    const totalInClass = data.total_attendance || 1;
                     const msg = `👍 ${totalUnderstood} מתוך ${totalInClass} תלמידים סימנו שהבינו`;
                     
-                    showToast(msg, 'success'); // מציג הודעה ירוקה צפה שאפשר לסגור בדפדפן
-                    sendDesktopNotification("✅ עדכון הבנה", msg); // מקפיץ התראה בווינדוס
+                    showToast(msg, 'success');
+                    sendDesktopNotification("✅ עדכון הבנה", msg);
                 }
             } catch (e) { console.error(e); }
         }
@@ -253,7 +316,6 @@
             toast.innerHTML = `<span class="close-toast" onclick="this.parentElement.remove()">✖</span><div style="margin-right:20px;">${message}</div>`;
             container.appendChild(toast);
             
-            // נעלם אוטומטית אחרי חצי דקה אם המרצה לא סגר בעצמו
             setTimeout(() => {
                 if(toast.parentElement) {
                     toast.classList.add('hide');
