@@ -33,7 +33,8 @@ def init_db():
     cursor.execute('''CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, course_id INTEGER, token TEXT, status TEXT)''')
     cursor.execute('''CREATE TABLE IF NOT EXISTS attendance (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, student_id TEXT)''')
     cursor.execute('''CREATE TABLE IF NOT EXISTS participation (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, student_id TEXT, action_type TEXT, points INTEGER)''')
-    
+    # מוסיף את המרצה הראשון למערכת כדי שנוכל להתחבר
+    cursor.execute("INSERT OR IGNORE INTO users (id, first_name, last_name, role) VALUES ('kfir@ariel.ac.il', 'כפיר', 'מרצה', 'lecturer')")
     conn.commit()
     conn.close()
 

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניהול קורס מורחב</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
+        .navbar { background-color: #004085; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
+        
+        .btn { background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .btn:hover { background: #0056b3; }
+        .btn-danger { background: #dc3545; }
+        .btn-success { background: #28a745; }
+        .btn-warning { background: #ffc107; color: black; font-weight: bold; }
+        .btn-live { background-color: #28a745; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-right: 15px; }
+
+        /* לשוניות */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .tab-btn { background: transparent; border: none; padding: 10px 20px; cursor: pointer; font-size: 18px; font-weight: bold; color: #555; }
+        .tab-btn.active { color: #007bff; border-bottom: 3px solid #007bff; }
+        .tab-content { display: none; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .tab-content.active { display: block; }
+
+        /* טבלת סטודנטים */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; }
+        
+        /* חומרי לימוד */
+        .lesson-block { border: 1px solid #e1e8ed; border-radius: 8px; margin-bottom: 20px; padding: 20px; background: #fafbfc; }
+        .lesson-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 15px; }
+        .lesson-topic { font-size: 20px; font-weight: bold; border: none; background: transparent; color: #333; width: 80%; }
+        .lesson-topic:focus { outline: none; border-bottom: 2px solid #007bff; }
+        .file-drop { border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 5px; background: white; margin-top: 10px; cursor: pointer; }
+        .file-item { display: inline-block; background: #e9ecef; padding: 8px 12px; border-radius: 20px; margin: 5px 0 5px 10px; font-size: 14px; border: 1px solid #ccc; }
+
+        /* סקרים */
+        .survey-card { border: 1px solid #ddd; border-top: 8px solid #673ab7; border-radius: 10px; padding: 25px; margin-bottom: 20px; }
+        .survey-question { width: 100%; border: none; border-bottom: 1px solid #ccc; font-size: 22px; padding: 10px 0; margin-bottom: 20px; background: transparent; }
+        .survey-option { display: flex; align-items: center; margin-bottom: 10px; }
+        .survey-option input[type="text"] { flex-grow: 1; border: none; border-bottom: 1px solid #ddd; padding: 8px; margin-right: 10px; font-size: 16px; }
+        .timer-control { background: #e3f2fd; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .live-survey-box { display: none; text-align: center; background: #e8f5e9; border: 2px solid #4caf50; padding: 30px; border-radius: 10px; margin-bottom: 20px; }
+        
+        .time-input { padding: 8px; font-size: 16px; width: 60px; text-align: center; border: 1px solid #ccc; border-radius: 5px; }
+        .time-select { padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div style="display: flex; align-items: center;">
+            <h1 style="margin: 0; margin-left: 20px;">ניהול קורס</h1>
+            <button class="btn-live" onclick="window.location.href='/live_session.html'">🟢 פתח QR להתחלת שיעור</button>
+        </div>
+        <button class="btn btn-danger" onclick="window.location.href='/lecturer.html'">חזור לראשי</button>
+    </div>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('students', this)">רשימת סטודנטים</button>
+            <button class="tab-btn" onclick="switchTab('materials', this)">חומרי לימוד</button>
+            <button class="tab-btn" onclick="switchTab('surveys', this)">סקרים בזמן אמת</button>
+            <button class="tab-btn" onclick="switchTab('emails', this)">דיוור למייל</button>
+        </div>
+
+        <!-- 1. סטודנטים -->
+        <div id="students" class="tab-content active">
+            <div style="display: flex; justify-content: space-between;">
+                <h3>עריכת נתוני סטודנטים</h3>
+                <div>
+                    <button class="btn btn-success" onclick="alert('מוריד קובץ...')">הורד כקובץ Excel 📥</button>
+                    <button class="btn" style="background: #17a2b8;" onclick="document.getElementById('excelUploadInput').click()">העלה אקסל חדש (דרוס קיים) 📤</button>
+                    <input type="file" id="excelUploadInput" accept=".xlsx" style="display: none;" onchange="handleExcelUpload(this)">
+                </div>
+            </div>
+            <table id="studentsTable">
+                <tr>
+                    <th>אימייל / מזהה</th>
+                    <th>שם מלא</th>
+                    <th>אחוזי נוכחות</th>
+                    <th>פעולות</th>
+                </tr>
+                <tr class="student-data-row">
+                    <td contenteditable="true" placeholder="אימייל...">student_example@ariel.ac.il</td>
+                    <td contenteditable="true" placeholder="שם...">ישראל ישראלי</td>
+                    <td>0%</td>
+                    <td>
+                        <button class="btn btn-warning">שמור</button>
+                        <button class="btn btn-danger" onclick="this.closest('tr').remove()">מחק</button>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 2. חומרי לימוד -->
+        <div id="materials" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3>היסטוריית שיעורים וחומרים</h3>
+                <button class="btn btn-success" onclick="addNewLesson()">+ הוסף שיעור חדש</button>
+            </div>
+            
+            <div id="lessons-container">
+                <p id="no-lessons-msg" style="text-align: center; color: #777; font-size: 18px; margin-top: 40px;">אין שיעורים קודמים. לחץ על "+ הוסף שיעור חדש" כדי להתחיל.</p>
+            </div>
+        </div>
+
+        <!-- 3. סקרים -->
+        <div id="surveys" class="tab-content">
+            
+            <div id="live-survey-box" class="live-survey-box">
+                <h2 style="color: #2e7d32; margin-top: 0;">🔴 סקר פעיל באוויר!</h2>
+                <p style="font-size: 20px;">זמן נותר: <span id="countdown-display" style="font-weight: bold; font-size: 28px; color: #dc3545;">00:00</span></p>
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-warning" onclick="alert('נוספו 2 דקות לסקר!')">+ הארך זמן</button>
+                    <button class="btn btn-danger" onclick="endSurvey()">סגור סקר ופתח חדש 🛑</button>
+                </div>
+            </div>
+
+            <div class="survey-card" id="survey-creator">
+                <div id="survey-questions-container">
+                    <div class="question-block" style="margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 20px;">
+                        <input type="text" class="survey-question" placeholder="הקלד את שאלת הסקר כאן...">
+                        <div class="optionsContainer">
+                            <div class="survey-option"><input type="radio" disabled> <input type="text" placeholder="אפשרות 1..."></div>
+                            <div class="survey-option"><input type="radio" disabled> <input type="text" placeholder="אפשרות 2..."></div>
+                        </div>
+                        <button class="btn" style="background: transparent; color: #673ab7; border: 1px solid #673ab7; margin-top: 10px;" onclick="addOption(this)">+ הוסף אפשרות לתשובה</button>
+                    </div>
+                </div>
+                
+                <button class="btn" style="background: #e3f2fd; color: #007bff; font-weight: bold; width: 100%; margin-bottom: 20px; padding: 10px;" onclick="addQuestion()">+ הוסף שאלה נוספת לאותו הסקר</button>
+                
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                
+                <div class="timer-control">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <strong>הגבלת זמן:</strong> 
+                        <input type="number" id="surveyTimeValue" class="time-input" value="3" min="1">
+                        <select class="time-select">
+                            <option value="minutes">דקות</option>
+                            <option value="hours">שעות</option>
+                            <option value="days">ימים</option>
+                            <option value="weeks">שבועות</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button class="btn btn-success" style="background: #673ab7; font-size: 16px;" onclick="launchSurvey()">שגר סקר לכיתה 🚀</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="survey-history-container" style="margin-top: 40px; display: none;">
+                <h3>📊 היסטוריית סקרים (סקרים סגורים)</h3>
+            </div>
+        </div>
+
+        <!-- 4. דיוור למייל -->
+        <div id="emails" class="tab-content">
+            <h3>שליחת הודעה לתיבות האימייל של הכיתה</h3>
+            <div style="border: 1px solid #ddd; padding: 25px; border-radius: 10px; background: white;">
+                <input type="text" placeholder="נושא ההודעה..." style="width: 100%; padding: 12px; margin-bottom: 15px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px;">
+                <textarea placeholder="תוכן ההודעה..." style="width: 100%; height: 150px; padding: 12px; margin-bottom: 15px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px;"></textarea>
+                <button class="btn btn-success" style="font-size: 18px; padding: 10px 30px;">שלח מייל לכל הקורס 📧</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ניווט לשוניות
+        function switchTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btnElement.classList.add('active');
+        }
+
+        // דריסת אקסל קודם
+        function handleExcelUpload(input) {
+            if(input.files.length > 0) {
+                alert('הקובץ "' + input.files[0].name + '" מוחק כעת את הנתונים הישנים ומחליף אותם בחדשים.');
+                
+                const table = document.getElementById('studentsTable');
+                while(table.rows.length > 1) {
+                    table.deleteRow(1);
+                }
+                
+                const newRow = table.insertRow(-1);
+                newRow.className = "student-data-row";
+                newRow.innerHTML = `
+                    <td contenteditable="true">new_student@ariel.ac.il</td>
+                    <td contenteditable="true">סטודנט חדש (מהקובץ)</td>
+                    <td>0%</td>
+                    <td>
+                        <button class="btn btn-warning">שמור</button>
+                        <button class="btn btn-danger" onclick="this.closest('tr').remove()">מחק</button>
+                    </td>
+                `;
+            }
+        }
+
+        // הוספת חומרים עם זיהוי כל סוגי הקבצים
+        let lessonCounter = 0;
+        function addNewLesson() {
+            document.getElementById('no-lessons-msg').style.display = 'none';
+            lessonCounter++;
+            const container = document.getElementById('lessons-container');
+            const block = document.createElement('div');
+            block.className = 'lesson-block';
+            const today = new Date().toLocaleDateString('he-IL');
+
+            block.innerHTML = `
+                <div class="lesson-header">
+                    <div style="width: 70%;">
+                        <span style="font-size: 12px; color: #777;">שיעור נפתח בתאריך: ${today}</span><br>
+                        <input type="text" class="lesson-topic" placeholder="הקלד את נושא השיעור כאן...">
+                    </div>
+                    <div><button class="btn btn-danger" onclick="this.closest('.lesson-block').remove()">מחק שיעור</button></div>
+                </div>
+                <div id="fileList_${lessonCounter}" style="margin-bottom: 15px;"></div>
+                
+                <div class="file-drop" onclick="document.getElementById('fileUpload_${lessonCounter}').click()">
+                    לחץ כאן כדי להעלות חומרים לשיעור (וורד, וידאו, תמונות, PDF, אקסל)
+                    <input type="file" id="fileUpload_${lessonCounter}" multiple style="display: none;" onchange="handleFileUpload(this, 'fileList_${lessonCounter}')">
+                </div>
+            `;
+            container.insertBefore(block, container.firstChild);
+        }
+
+        function handleFileUpload(input, listId) {
+            const list = document.getElementById(listId);
+            for(let i=0; i<input.files.length; i++) {
+                const file = input.files[i];
+                let icon = '📄';
+                const name = file.name.toLowerCase();
+                
+                if (name.endsWith('.mp4') || name.endsWith('.avi')) icon = '🎥';
+                else if (name.endsWith('.doc') || name.endsWith('.docx')) icon = '📝';
+                else if (name.endsWith('.xls') || name.endsWith('.xlsx')) icon = '📊';
+                else if (name.endsWith('.jpg') || name.endsWith('.png') || name.endsWith('.jpeg')) icon = '🖼️';
+                else if (name.endsWith('.pdf')) icon = '📕';
+                else if (name.endsWith('.ppt') || name.endsWith('.pptx')) icon = '🪧';
+
+                const span = document.createElement('span');
+                span.className = 'file-item';
+                span.innerHTML = `${icon} ${file.name} <span style="color:red; cursor:pointer; margin-right: 8px; font-weight:bold;" onclick="this.parentElement.remove()" title="מחק קובץ">✖</span>`;
+                list.appendChild(span);
+            }
+            input.value = ''; 
+        }
+
+        // --- סקרים ---
+        let countdownInterval;
+
+        function addOption(btnElement) {
+            const container = btnElement.previousElementSibling;
+            const div = document.createElement('div');
+            div.className = 'survey-option';
+            div.innerHTML = '<input type="radio" disabled> <input type="text" placeholder="אפשרות חדשה...">';
+            container.appendChild(div);
+        }
+
+        function addQuestion() {
+            const container = document.getElementById('survey-questions-container');
+            const block = document.createElement('div');
+            block.className = 'question-block';
+            block.style.cssText = "margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 20px;";
+            block.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <input type="text" class="survey-question" placeholder="הקלד את שאלת הסקר כאן..." style="width: 85%;">
+                    <button class="btn btn-danger" onclick="this.closest('.question-block').remove()">מחק שאלה</button>
+                </div>
+                <div class="optionsContainer">
+                    <div class="survey-option"><input type="radio" disabled> <input type="text" placeholder="אפשרות 1..."></div>
+                    <div class="survey-option"><input type="radio" disabled> <input type="text" placeholder="אפשרות 2..."></div>
+                </div>
+                <button class="btn" style="background: transparent; color: #673ab7; border: 1px solid #673ab7; margin-top: 10px;" onclick="addOption(this)">+ הוסף אפשרות לתשובה</button>
+            `;
+            container.appendChild(block);
+        }
+
+        function launchSurvey() {
+            document.getElementById('survey-creator').style.display = 'none';
+            document.getElementById('live-survey-box').style.display = 'block';
+            
+            let secondsLeft = parseInt(document.getElementById('surveyTimeValue').value) * 60; 
+            const display = document.getElementById('countdown-display');
+            
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                secondsLeft--;
+                let m = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
+                let s = (secondsLeft % 60).toString().padStart(2, '0');
+                display.innerText = `${m}:${s}`;
+                if (secondsLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    display.innerText = "00:00 (הזמן נגמר)";
+                }
+            }, 1000);
+        }
+
+        function endSurvey() {
+            clearInterval(countdownInterval);
+            document.getElementById('live-survey-box').style.display = 'none';
+            document.getElementById('survey-creator').style.display = 'block';
+            
+            const historyContainer = document.getElementById('survey-history-container');
+            historyContainer.style.display = 'block';
+            const historyItem = document.createElement('div');
+            historyItem.style.cssText = 'background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-right: 5px solid #777;';
+            historyItem.innerHTML = `<strong>סקר נסגר (${new Date().toLocaleDateString()}):</strong> השאלה נשמרה במסד הנתונים.`;
+            historyContainer.appendChild(historyItem);
+            
+            document.getElementById('survey-questions-container').innerHTML = `
+                <div class="question-block" style="margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 20px;">
+                    <input type="text" class="survey-question" placeholder="הקלד את שאלת הסקר כאן...">
+                    <div class="optionsContainer">
+                        <div class="survey-option"><input type="radio" disabled> <input type="text" placeholder="אפשרות 1..."></div>
+                        <div class="survey-option"><input type="radio" disabled> <input type="text" placeholder="אפשרות 2..."></div>
+                    </div>
+                    <button class="btn" style="background: transparent; color: #673ab7; border: 1px solid #673ab7; margin-top: 10px;" onclick="addOption(this)">+ הוסף אפשרות לתשובה</button>
+                </div>
+            `;
+            
+            alert("הסקר נסגר והועבר להיסטוריה. כעת ניתן ליצור סקר חדש לגמרי.");
+        }
+    </script>
+</body>
+</html>

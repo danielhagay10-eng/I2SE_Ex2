@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>דשבורד סטודנט</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
+        .navbar { background-color: #17a2b8; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+        
+        .btn { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-ai { background: linear-gradient(45deg, #6f42c1, #007bff); font-weight: bold; }
+        .btn-ai:hover { background: linear-gradient(45deg, #59339d, #0056b3); }
+        
+        /* אזור QR */
+        .qr-section { background: white; padding: 30px; border-radius: 12px; text-align: center; border: 2px dashed #17a2b8; margin-bottom: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .qr-btn { background: #17a2b8; font-size: 20px; padding: 15px 30px; border-radius: 50px; }
+        
+        /* חומרי לימוד */
+        .lesson-card { background: white; border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-right: 5px solid #007bff; }
+        .lesson-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px; }
+        .lesson-title { font-size: 22px; font-weight: bold; color: #333; margin: 0; }
+        .lesson-date { color: #777; font-size: 14px; }
+        .materials-list { margin-bottom: 20px; }
+        .material-item { display: inline-block; background: #e9ecef; padding: 8px 15px; border-radius: 20px; margin-left: 10px; font-size: 14px; text-decoration: none; color: #333; }
+        .material-item:hover { background: #dee2e6; }
+        
+        .lesson-actions { display: flex; gap: 15px; }
+        
+        /* חלון AI סודי (מוסתר כברירת מחדל) */
+        .ai-summary-box { display: none; background: #f8f9fa; border: 1px solid #d1d7dc; border-left: 4px solid #6f42c1; padding: 20px; border-radius: 8px; margin-top: 15px; line-height: 1.6; }
+        
+        /* סקרים */
+        .survey-card { background: #fff3cd; border-right: 5px solid #ffc107; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .survey-title { margin-top: 0; color: #856404; font-size: 20px; }
+        .survey-option { margin-bottom: 10px; font-size: 16px; }
+
+        /* מודל אימייל למרצה (מוסתר כברירת מחדל) */
+        .email-modal { display: none; background: white; border: 1px solid #ccc; padding: 20px; border-radius: 10px; margin-top: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .email-input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; box-sizing: border-box; }
+        .email-textarea { width: 100%; padding: 10px; height: 100px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; resize: vertical; box-sizing: border-box; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h1 style="margin: 0; font-size: 22px;">קורס: מבוא לחישוב</h1>
+        <div>שלום, תלמיד | <a href="/" style="color: #fff; text-decoration: underline;">חזור לקורסים</a></div>
+    </div>
+
+    <div class="container">
+        
+        <!-- אזור כניסה לשיעור חי -->
+        <div class="qr-section">
+            <h2 style="margin-top: 0; color: #17a2b8;">נוכח בכיתה?</h2>
+            <p>המרצה פתח שיעור חי. סרוק את הקוד המוקרן על הלוח כדי להירשם כנוכח.</p>
+            <button class="btn qr-btn" onclick="scanQR()">📷 סרוק קוד QR עכשיו</button>
+        </div>
+
+        <!-- אזור סקרים זמינים (מופיע רק כשהמרצה משגר סקר) -->
+        <div id="active-surveys">
+            <h3 style="color: #555;">📋 סקרים פעילים</h3>
+            <div class="survey-card" id="survey-1">
+                <h4 class="survey-title">שאלת המרצה: האם קצב השיעור הנוכחי ברור?</h4>
+                <div class="survey-option"><label><input type="radio" name="q1"> כן, הכל מובן</label></div>
+                <div class="survey-option"><label><input type="radio" name="q1"> קצת מהר מדי, אשמח לחזרה קצרה</label></div>
+                <button class="btn" style="background: #ffc107; color: black; font-weight: bold; margin-top: 10px;" onclick="submitSurvey('survey-1')">שלח תשובה למרצה</button>
+            </div>
+        </div>
+
+        <h3 style="color: #555; margin-top: 40px; border-bottom: 2px solid #ddd; padding-bottom: 10px;">📚 שיעורים מוקלטים וחומרים</h3>
+
+        <!-- בלוק שיעור מוקלט 1 -->
+        <div class="lesson-card">
+            <div class="lesson-header">
+                <div>
+                    <h3 class="lesson-title">מערכים ולולאות</h3>
+                    <span class="lesson-date">תאריך: 10/11/2026</span>
+                </div>
+            </div>
+            
+            <div class="materials-list">
+                <strong>קובצי השיעור:</strong>
+                <a href="#" class="material-item">🎥 הקלטת_שיעור_מלא.mp4</a>
+                <a href="#" class="material-item">📄 מצגת_לולאות.pdf</a>
+            </div>
+            
+            <div class="lesson-actions">
+                <button class="btn btn-ai" onclick="generateAISummary('ai-box-1')">✨ סכם לי את השיעור (AI)</button>
+                <button class="btn" onclick="openEmailForm('email-form-1', 'מערכים ולולאות')">✉️ שלח שאלה למרצה</button>
+            </div>
+
+            <!-- אזור סיכום AI (נפתח בלחיצה) -->
+            <div class="ai-summary-box" id="ai-box-1">
+                <strong>🤖 סיכום חכם של השיעור:</strong><br>
+                בשיעור זה למדנו על ההבדלים בין לולאות `for` ללולאות `while`. המרצה הסביר כיצד לרוץ על מערך נתונים ולשלוף ערכים ספציפיים. נקודה חשובה מההקלטה (דקה 14:20): תמיד לבדוק חריגה מגבולות המערך כדי למנוע שגיאות זמן ריצה.
+            </div>
+
+            <!-- טופס אימייל למרצה (נפתח בלחיצה) -->
+            <div class="email-modal" id="email-form-1">
+                <h4 style="margin-top: 0; color: #333;">שליחת מייל למרצה</h4>
+                <label style="font-size: 14px; color: #555;">נושא (ניתן לעריכה):</label>
+                <input type="text" class="email-input" id="email-subject-1">
+                
+                <label style="font-size: 14px; color: #555;">השאלה שלך:</label>
+                <textarea class="email-textarea" placeholder="הקלד את שאלתך כאן..."></textarea>
+                
+                <div style="text-align: left;">
+                    <button class="btn" style="background: #6c757d;" onclick="document.getElementById('email-form-1').style.display='none'">ביטול</button>
+                    <button class="btn btn-success" onclick="sendEmail('email-form-1')">שלח למייל של המרצה 🚀</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // פונקציית סריקת נוכחות
+        function scanQR() {
+            alert("המצלמה נפתחת... \n(ברגע שתסרוק את הברקוד של המרצה, הנוכחות שלך תירשם במסד הנתונים!)");
+        }
+
+        // פונקציית הגשת סקר
+        function submitSurvey(surveyId) {
+            const survey = document.getElementById(surveyId);
+            survey.innerHTML = '<h3 style="color: #28a745; text-align: center; margin: 0;">✅ תשובתך נקלטה והועברה למרצה בהצלחה!</h3>';
+            setTimeout(() => { survey.style.display = 'none'; }, 3000);
+        }
+
+        // פונקציית AI לסיכום השיעור
+        function generateAISummary(boxId) {
+            const box = document.getElementById(boxId);
+            if (box.style.display === 'block') {
+                box.style.display = 'none';
+            } else {
+                box.innerHTML = '<em>מנתח את קובץ הוידאו והמצגת בעזרת מודל AI... ממתין לתשובה ⏳</em>';
+                box.style.display = 'block';
+                
+                // מדמה המתנה של שנייה לתשובת שרת ה-AI
+                setTimeout(() => {
+                    box.innerHTML = `
+                        <strong>🤖 סיכום חכם של השיעור:</strong><br>
+                        בשיעור זה למדנו על ההבדלים בין לולאות <code>for</code> ללולאות <code>while</code>. המרצה הסביר כיצד לרוץ על מערך נתונים ולשלוף ערכים ספציפיים. <br><br>
+                        💡 <strong>טיפ מההקלטה (דקה 14:20):</strong> תמיד לבדוק חריגה מגבולות המערך כדי למנוע שגיאות.
+                    `;
+                }, 1500);
+            }
+        }
+
+        // פתיחת טופס האימייל עם נושא אוטומטי
+        function openEmailForm(formId, lessonTopic) {
+            const form = document.getElementById(formId);
+            if (form.style.display === 'block') {
+                form.style.display = 'none';
+            } else {
+                form.style.display = 'block';
+                // ממלא אוטומטית את נושא המייל לפי נושא השיעור
+                const subjectInput = form.querySelector('.email-input');
+                subjectInput.value = "שאלה לגבי שיעור: " + lessonTopic;
+            }
+        }
+
+        // שליחת האימייל
+        function sendEmail(formId) {
+            alert("המייל נשלח בהצלחה לתיבת האימייל של המרצה!");
+            document.getElementById(formId).style.display = 'none';
+        }
+    </script>
+</body>
+</html>

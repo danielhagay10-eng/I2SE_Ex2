@@ -54,17 +54,33 @@
         </div>
     </div>
 
-    <script>
-        // הפונקציה הזו מופעלת אוטומטית ברגע שהמשתמש בוחר חשבון גוגל
-        function handleCredentialResponse(response) {
-            console.log("Google Token Received!");
-            // response.credential מכיל את הטוקן המוצפן מגוגל עם האימייל של המשתמש
-            console.log(response.credential);
+   <script>
+        async function handleCredentialResponse(response) {
+            const googleToken = response.credential;
             
-            alert("התחברת בהצלחה לגוגל! הטוקן מודפס בקונסול.");
-            
-            // בשלב הבא אנחנו נשלח את הטוקן הזה לשרת FastAPI שלנו 
-            // כדי לבדוק אם הוא מרצה או סטודנט שמופיע באקסל.
+            try {
+                // הקוד הזה לוקח את הטוקן מגוגל ושולח אותו לשרת הפייתון שלנו!
+                const res = await fetch("http://127.0.0.1:8000/auth/google", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ token: googleToken })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert("התחברת בהצלחה, " + data.name + "!");
+                    // מעביר לדשבורד המרצה
+                    window.location.href = "/lecturer-dashboard";
+                } else {
+                    alert("שגיאה: " + data.detail);
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("אין תקשורת מול השרת.");
+            }
         }
     </script>
 
