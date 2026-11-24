@@ -197,23 +197,38 @@
     </div>
 
     <script>
-        const currentCourse = localStorage.getItem('course_name') || '';
+       const currentCourse = localStorage.getItem('course_name') || '';
         let activeSurveyId = null;
         let surveyPollInterval = null;
         const draftFilesMap = {};
 
-        document.addEventListener('DOMContentLoaded', () => {
+        async function initCourseDashboard() {
             if (!currentCourse) {
                 window.location.href = '/lecturer.html';
                 return;
             }
+            // אימות שהקורס לא נמחק לפני הצגת הנתונים (מגן מפני כפתור "חזור" בדפדפן)
+            try {
+                const check = await fetch(`/api/courses/exists?course_name=${encodeURIComponent(currentCourse)}&_t=${Date.now()}`);
+                const checkData = await check.json();
+                if (!checkData.exists) {
+                    localStorage.removeItem('course_name');
+                    localStorage.removeItem('course_id');
+                    window.location.href = '/lecturer.html';
+                    return;
+                }
+            } catch (e) {}
+
             document.getElementById('courseHeaderTitle').innerText = `ניהול קורס: ${currentCourse}`;
             loadStudents();
             loadCourseStaff();
             loadLessons();
             checkActiveSurvey();
             loadSurveyHistory();
-        });
+        }
+
+        document.addEventListener('DOMContentLoaded', initCourseDashboard);
+        window.addEventListener('pageshow', initCourseDashboard);
 
         function escapeHtml(str) {
             return String(str || '')

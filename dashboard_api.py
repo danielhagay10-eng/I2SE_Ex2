@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional
 import json
 import time
 import os
+import io
 import uuid
 import shutil
 import smtplib
@@ -95,7 +96,6 @@ def _get_course_staff_list(cursor, course_name: str) -> List[Dict[str, str]]:
     staff = []
     seen = set()
 
-    # 1. מרצה הקורס הראשי מתוך טבלת courses
     cursor.execute(
         """SELECT c.lecturer_id, u.first_name, u.last_name
            FROM courses c
@@ -116,7 +116,6 @@ def _get_course_staff_list(cursor, course_name: str) -> List[Dict[str, str]]:
         })
         seen.add(lec_email)
 
-    # 2. מתרגלים ומרצים נוספים מתוך course_staff
     cursor.execute(
         "SELECT id, staff_email, full_name, role_title FROM course_staff WHERE course_name = ? ORDER BY id ASC",
         (course_name,)
@@ -132,7 +131,6 @@ def _get_course_staff_list(cursor, course_name: str) -> List[Dict[str, str]]:
                 "role_title": row["role_title"] or "מתרגל"
             })
 
-    # 3. גיבוי אם הקורס נוצר ללא lecturer_id תקין
     if not staff:
         cursor.execute("SELECT id, first_name, last_name FROM users WHERE role = 'lecturer' AND id LIKE '%@%' LIMIT 1")
         fallback = cursor.fetchone()
@@ -214,7 +212,7 @@ def _send_smtp_email(recipients: List[str], subject: str, body: str, reply_to: s
         raise HTTPException(status_code=500, detail=f"שגיאה בשליחת המייל: {str(e)}")
 
 
-def _parse_roster_excel(file_obj) -> tuple[List[Dict[str, str]], List[Dict[str, str]]]:
+def _parse_roster_excel(raw_bytes: bytes) -> tuple[List[Dict[str, str]], List[Dict[str, str]]]:
     try:
         import openpyxl
     except ImportError:
@@ -223,43 +221,67 @@ def _parse_roster_excel(file_obj) -> tuple[List[Dict[str, str]], List[Dict[str, 
             detail="חסרה הספרייה openpyxl לקריאת קבצי Excel. הרץ בטרמינל: pip install openpyxl"
         )
 
-    wb = openpyxl.load_workbook(file_obj, data_only=True)
+    wb = openpyxl.load_workbook(io.BytesIO(raw_bytes), read_only=True, data_only=True)
     ws = wb.active
-    rows = list(ws.iter_rows(values_only=True))
+
+    rows = []
+    empty_streak = 0
+    for r in ws.iter_rows(values_only=True):
+        if not r or all(v is None or str(v).strip() == "" for v in r):
+            empty_streak += 1
+            if empty_streak >= 20:
+                break
+            continue
+        empty_streak = 0
+        rows.append(r)
+    wb.close()
+
     if not rows:
         return [], []
 
-    headers = [str(cell).strip().lower() if cell is not None else "" for cell in rows[0]]
+    first_row_strs = [str(cell).strip().lower() if cell is not None else "" for cell in rows[0]]
+    has_header = not any("@" in cell for cell in first_row_strs)
 
-    def find_col(candidates):
-        for idx, h in enumerate(headers):
-            for c in candidates:
-                if c == h or c in h:
-                    return idx
-        return None
+    email_idx = None
+    first_idx = None
+    last_idx = None
+    full_idx = None
+    id_idx = None
+    role_idx = None
+    data_rows = rows[1:] if has_header else rows
 
-    email_idx = find_col(['כתובת דוא"ל', 'כתובת דוא״ל', 'דוא"ל', 'אימייל', 'מייל', 'email', 'e-mail'])
-    first_idx = find_col(['שם פרטי', 'first name', 'firstname'])
-    last_idx = find_col(['שם משפחה', 'last name', 'lastname', 'surname'])
-    full_idx = find_col(['שם מלא', 'full name', 'fullname', 'name', 'שם'])
-    id_idx = find_col(['מספר זיהוי', 'תעודת זהות', 'ת"ז', 'מזהה', 'id number', 'id'])
-    role_idx = find_col(['תפקידים', 'תפקיד', 'roles', 'role'])
+    if has_header:
+        def find_col(candidates):
+            for idx, h in enumerate(first_row_strs):
+                for c in candidates:
+                    if c == h or c in h:
+                        return idx
+            return None
 
-    if email_idx is None:
-        raise HTTPException(
-            status_code=400,
-            detail="לא נמצאה עמודת כתובת דוא\"ל בקובץ האקסל. ודא שיש עמודה עם כותרת 'כתובת דוא\"ל' או 'Email'."
-        )
+        email_idx = find_col(['כתובת דוא"ל', 'כתובת דוא״ל', 'דוא"ל', 'אימייל', 'מייל', 'email', 'e-mail'])
+        first_idx = find_col(['שם פרטי', 'first name', 'firstname'])
+        last_idx = find_col(['שם משפחה', 'last name', 'lastname', 'surname'])
+        full_idx = find_col(['שם מלא', 'full name', 'fullname', 'name', 'שם'])
+        id_idx = find_col(['מספר זיהוי', 'תעודת זהות', 'ת"ז', 'מזהה', 'id number', 'id'])
+        role_idx = find_col(['תפקידים', 'תפקיד', 'roles', 'role'])
 
     students = []
     staff = []
     seen = set()
 
-    for r in rows[1:]:
-        if not r or all(v is None or str(v).strip() == "" for v in r):
-            continue
+    for r in data_rows:
+        raw_email = ""
+        found_email_col = None
+        if email_idx is not None and email_idx < len(r) and r[email_idx] is not None:
+            raw_email = str(r[email_idx]).strip().lower()
+            found_email_col = email_idx
+        else:
+            for idx, cell in enumerate(r):
+                if cell is not None and "@" in str(cell):
+                    raw_email = str(cell).strip().lower()
+                    found_email_col = idx
+                    break
 
-        raw_email = str(r[email_idx]).strip().lower() if (email_idx < len(r) and r[email_idx] is not None) else ""
         if "@" not in raw_email or raw_email in seen:
             continue
         seen.add(raw_email)
@@ -275,6 +297,23 @@ def _parse_roster_excel(file_obj) -> tuple[List[Dict[str, str]], List[Dict[str, 
             full_name = f"{first_name} {last_name}".strip()
         elif full_idx is not None and full_idx < len(r) and r[full_idx] is not None:
             full_name = str(r[full_idx]).strip()
+        elif not has_header:
+            name_parts = []
+            for idx, cell in enumerate(r):
+                if idx == found_email_col or cell is None:
+                    continue
+                val = str(cell).strip()
+                if val.endswith(".0"):
+                    val = val[:-2]
+                if val and not val.isdigit() and "@" not in val:
+                    name_parts.append(val)
+            if len(name_parts) >= 2:
+                first_name, last_name = name_parts[0], name_parts[1]
+                full_name = f"{first_name} {last_name}".strip()
+            elif len(name_parts) == 1:
+                full_name = name_parts[0]
+            else:
+                full_name = raw_email.split("@")[0]
         else:
             full_name = raw_email.split("@")[0]
 
@@ -310,9 +349,24 @@ def _parse_roster_excel(file_obj) -> tuple[List[Dict[str, str]], List[Dict[str, 
 
 
 # --- 0. ניהול קורסים של מרצה וקורסים של תלמיד ---
+@dashboard_router.get("/courses/exists")
+async def check_course_exists(course_name: str):
+    """בודק האם הקורס עדיין קיים במערכת (למניעת חזרה לעמוד של קורס שנמחק)."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    _ensure_tables(cursor)
+    cursor.execute("SELECT 1 FROM courses WHERE course_name = ? LIMIT 1", (course_name.strip(),))
+    exists = bool(cursor.fetchone())
+    conn.close()
+    return {"exists": exists}
+
+
 @dashboard_router.get("/lecturer/courses")
 async def get_lecturer_courses(lecturer_id: str):
     clean_lec = lecturer_id.strip().lower()
+    demo_lec = os.getenv("DEMO_LECTURER_EMAIL", "demo.lecturer@smartlms.local").strip().lower()
+    demo_stu = os.getenv("DEMO_STUDENT_EMAIL", "demo.student@smartlms.local").strip().lower()
+
     conn = get_db_connection()
     cursor = conn.cursor()
     _ensure_tables(cursor)
@@ -326,6 +380,13 @@ async def get_lecturer_courses(lecturer_id: str):
 
     courses = []
     for r in rows:
+        if clean_lec == demo_lec:
+            cursor.execute(
+                "INSERT OR IGNORE INTO course_students (course_name, student_email, full_name, id_number) VALUES (?, ?, 'סטודנט דמו', '000000000')",
+                (r["course_name"], demo_stu)
+            )
+            conn.commit()
+
         cursor.execute("SELECT COUNT(*) as cnt FROM course_students WHERE course_name = ?", (r["course_name"],))
         students_count = cursor.fetchone()["cnt"] or 0
         courses.append({
@@ -367,6 +428,18 @@ async def create_lecturer_course(data: CourseCreate):
         (clean_name, clean_lec, created_at)
     )
     course_id = cursor.lastrowid
+
+    # בקורס של מרצה דמו, משייכים מיד את סטודנט הדמו
+    demo_lec = os.getenv("DEMO_LECTURER_EMAIL", "demo.lecturer@smartlms.local").strip().lower()
+    demo_stu = os.getenv("DEMO_STUDENT_EMAIL", "demo.student@smartlms.local").strip().lower()
+    initial_students = 0
+    if clean_lec == demo_lec:
+        cursor.execute(
+            "INSERT OR IGNORE INTO course_students (course_name, student_email, full_name, id_number) VALUES (?, ?, 'סטודנט דמו', '000000000')",
+            (clean_name, demo_stu)
+        )
+        initial_students = 1
+
     conn.commit()
     conn.close()
 
@@ -377,7 +450,7 @@ async def create_lecturer_course(data: CourseCreate):
             "course_name": clean_name,
             "lecturer_id": clean_lec,
             "created_at": created_at,
-            "students_count": 0
+            "students_count": initial_students
         }
     }
 
@@ -413,7 +486,6 @@ async def rename_lecturer_course(course_id: int, data: CourseRename):
             conn.close()
             raise HTTPException(status_code=400, detail="כבר קיים אצלך קורס אחר בשם זה")
 
-        # עדכון שם הקורס בלבד — created_at נשמר ללא שינוי!
         cursor.execute("UPDATE courses SET course_name = ? WHERE id = ?", (new_name, course_id))
         cursor.execute("UPDATE course_students SET course_name = ? WHERE course_name = ?", (new_name, old_name))
         cursor.execute("UPDATE course_staff SET course_name = ? WHERE course_name = ?", (new_name, old_name))
@@ -473,7 +545,6 @@ async def get_student_courses(student_email: str):
     conn.commit()
 
     if clean_email == demo_student_email:
-        # סביבת דמו מבוקרת: רואה רק את הקורסים של מרצה הדמו
         cursor.execute(
             """SELECT c.id, c.course_name, c.lecturer_id, c.created_at, u.first_name, u.last_name
                FROM courses c
@@ -483,7 +554,6 @@ async def get_student_courses(student_email: str):
             (demo_lecturer_email,)
         )
     else:
-        # תלמיד רגיל: רואה אך ורק קורסים שבהם המרצה הכניס אותו לרשימת האקסל של הקורס
         cursor.execute(
             """SELECT DISTINCT c.id, c.course_name, c.lecturer_id, c.created_at, u.first_name, u.last_name
                FROM course_students cs
@@ -511,7 +581,7 @@ async def get_student_courses(student_email: str):
     return {"courses": courses}
 
 
-# --- 1. ניהול רשימת סטודנטים וצוות קורס (מרצה + מתרגלים), נוכחות ונקודות ---
+# --- 1. ניהול רשימת סטודנטים, צוות קורס (מרצה + מתרגלים), נוכחות ונקודות ---
 @dashboard_router.post("/course/students/upload-excel")
 async def upload_course_students_excel(
     course_name: str = Form(...),
@@ -520,7 +590,8 @@ async def upload_course_students_excel(
     if not file.filename.lower().endswith((".xlsx", ".xlsm")):
         raise HTTPException(status_code=400, detail="נא להעלות קובץ Excel תקין בפורמט .xlsx")
 
-    students, staff_members = _parse_roster_excel(file.file)
+    raw_bytes = await file.read()
+    students, staff_members = _parse_roster_excel(raw_bytes)
     if not students:
         raise HTTPException(status_code=400, detail="לא נמצאו סטודנטים עם כתובת מייל תקינה בקובץ האקסל")
 
@@ -611,6 +682,17 @@ async def get_course_students(course_name: str):
     cursor = conn.cursor()
     _ensure_tables(cursor)
     conn.commit()
+
+    # הוספה אוטומטית של סטודנט דמו לכל קורס של מרצה דמו
+    demo_lec = os.getenv("DEMO_LECTURER_EMAIL", "demo.lecturer@smartlms.local").strip().lower()
+    demo_stu = os.getenv("DEMO_STUDENT_EMAIL", "demo.student@smartlms.local").strip().lower()
+    cursor.execute("SELECT 1 FROM courses WHERE course_name = ? AND LOWER(lecturer_id) = ?", (course_name, demo_lec))
+    if cursor.fetchone():
+        cursor.execute(
+            "INSERT OR IGNORE INTO course_students (course_name, student_email, full_name, id_number) VALUES (?, ?, 'סטודנט דמו', '000000000')",
+            (course_name, demo_stu)
+        )
+        conn.commit()
 
     session_cols = _table_columns(cursor, "sessions")
     course_cols = _table_columns(cursor, "courses")
@@ -705,7 +787,7 @@ async def get_course_students(course_name: str):
     return {"students": result, "total_sessions": total_sessions}
 
 
-# --- 2. ניהול שיעורים והעלאת קבצים אמיתיים ---
+# --- 2. ניהול שיעורים והעלאת קבצים ---
 @dashboard_router.get("/lessons")
 async def get_lessons(course_name: str):
     conn = get_db_connection()
@@ -921,7 +1003,7 @@ async def get_surveys_history(course_name: Optional[str] = None):
     return {"history": history}
 
 
-# --- 4. סיכום שיעור וקבצים/סרטונים באמצעות Gemini ---
+# --- 4. סיכום שיעור וקבצים באמצעות Gemini AI ---
 @dashboard_router.post("/lessons/{lesson_id}/summarize")
 async def summarize_lesson(lesson_id: int):
     conn = get_db_connection()
@@ -1025,7 +1107,7 @@ async def summarize_lesson(lesson_id: int):
                 pass
 
 
-# --- 5. שליחת מיילים ישירה בין חשבונות Google (סטודנט <-> מרצה / מתרגל) ---
+# --- 5. שליחת מיילים ישירה בין סטודנטים לסגל הקורס ---
 @dashboard_router.post("/emails/ask-lecturer")
 async def send_question_to_lecturer(data: StudentQuestionEmail):
     if not data.subject.strip() or not data.body.strip():
@@ -1049,29 +1131,15 @@ async def send_question_to_lecturer(data: StudentQuestionEmail):
         chosen_staff = staff_list[0]
 
     real_recipient_email = chosen_staff["email"]
-    test_email = os.getenv("TEST_EMAIL", "").strip()
-
-    if test_email:
-        target_recipients = [test_email]
-        email_subject = f"[בדיקה -> {real_recipient_email}] {data.subject}"
-        email_body = (
-            f"מצב בדיקה (TEST_EMAIL): מייל זה היה נשלח במקור אל {chosen_staff['name']} ({chosen_staff['role_title']}): {real_recipient_email}\n"
-            f"--------------------------------------------------\n"
-            f"קורס: {data.course_name}\n"
-            f"מאת הסטודנט/ית: {data.student_name} ({data.student_email})\n\n"
-            f"{data.body}\n"
-        )
-    else:
-        target_recipients = [real_recipient_email]
-        email_subject = f"[{data.course_name}] {data.subject}"
-        email_body = (
-            f"שלום {chosen_staff['name']},\n"
-            f"התקבלה שאלה חדשה בקורס '{data.course_name}' מאת {data.student_name} ({data.student_email}):\n\n"
-            f"{data.body}\n"
-        )
+    email_subject = f"[{data.course_name}] {data.subject}"
+    email_body = (
+        f"שלום {chosen_staff['name']},\n"
+        f"התקבלה שאלה חדשה בקורס '{data.course_name}' מאת {data.student_name} ({data.student_email}):\n\n"
+        f"{data.body}\n"
+    )
 
     _send_smtp_email(
-        recipients=target_recipients,
+        recipients=[real_recipient_email],
         subject=email_subject,
         body=email_body,
         reply_to=data.student_email,
@@ -1080,8 +1148,8 @@ async def send_question_to_lecturer(data: StudentQuestionEmail):
 
     return {
         "status": "success",
-        "test_mode": bool(test_email),
-        "delivered_to": target_recipients[0],
+        "test_mode": False,
+        "delivered_to": real_recipient_email,
         "intended_lecturer": real_recipient_email
     }
 
@@ -1104,36 +1172,23 @@ async def broadcast_email_to_students(data: LecturerBroadcastEmail):
     real_students = sorted([row["student_email"].strip().lower() for row in cursor.fetchall()])
     conn.close()
 
-    test_email = os.getenv("TEST_EMAIL", "").strip()
+    if not real_students:
+        raise HTTPException(status_code=400, detail="לא נמצאו סטודנטים בקורס זה. העלה תחילה קובץ Excel בלשונית הסטודנטים.")
 
-    if test_email:
-        target_recipients = [test_email]
-        students_preview = ", ".join(real_students) if real_students else "לא הועלה עדיין קובץ אקסל לקורס זה"
-        email_subject = f"[בדיקה -> {len(real_students)} סטודנטים] [{data.course_name}] {data.subject}"
-        email_body = (
-            f"מצב בדיקה (TEST_EMAIL): מייל זה היה נשלח בשם המרצה ({lecturer_email}) ב-BCC אל {len(real_students)} סטודנטים בקורס '{data.course_name}':\n"
-            f"רשימת נמענים מקורית: {students_preview}\n"
-            f"--------------------------------------------------\n\n"
-            f"{data.body}\n"
-        )
-    else:
-        if not real_students:
-            raise HTTPException(status_code=400, detail="לא נמצאו סטודנטים בקורס זה. העלה תחילה קובץ Excel בלשונית הסטודנטים.")
-        target_recipients = real_students
-        email_subject = f"[{data.course_name}] {data.subject}"
-        email_body = f"הודעה מאת מרצה הקורס ({lecturer_email}):\n\n{data.body}\n"
+    email_subject = f"[{data.course_name}] {data.subject}"
+    email_body = f"הודעה מאת מרצה הקורס ({lecturer_email}):\n\n{data.body}\n"
 
     _send_smtp_email(
-        recipients=target_recipients,
+        recipients=real_students,
         subject=email_subject,
         body=email_body,
         reply_to=lecturer_email,
-        use_bcc=not bool(test_email)
+        use_bcc=True
     )
 
     return {
         "status": "success",
-        "test_mode": bool(test_email),
-        "delivered_to": test_email if test_email else f"{len(real_students)} סטודנטים",
+        "test_mode": False,
+        "delivered_to": f"{len(real_students)} סטודנטים",
         "students_count": len(real_students)
     }

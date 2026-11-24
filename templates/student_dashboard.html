@@ -6,13 +6,14 @@
     <title>דשבורד סטודנט - הקורסים שלי</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
-        .navbar { background-color: #17a2b8; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .navbar { background-color: #17a2b8; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
         
         .btn { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; transition: 0.2s; text-decoration: none; display: inline-block; }
         .btn:hover { background: #0056b3; }
         .btn-success { background: #28a745; }
         .btn-back { background: rgba(255,255,255,0.2); border: 1px solid white; color: white; font-weight: bold; }
+        .btn-lecturer { background: #004085; color: white; font-weight: bold; }
         .btn-ai { background: linear-gradient(45deg, #6f42c1, #007bff); font-weight: bold; }
         .btn-ai:hover { background: linear-gradient(45deg, #59339d, #0056b3); }
         
@@ -40,27 +41,34 @@
         .email-modal { display: none; background: #f9fbfd; border: 1px solid #cbd5e1; padding: 20px; border-radius: 10px; margin-top: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
         .email-input, .email-select { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; box-sizing: border-box; background: white; }
         .email-textarea { width: 100%; padding: 10px; height: 95px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; resize: vertical; box-sizing: border-box; margin-bottom: 12px; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 12px 16px; }
+            .container { margin: 18px auto; padding: 0 12px; }
+        }
     </style>
 </head>
 <body>
 
     <div class="navbar">
-        <div style="display: flex; align-items: center; gap: 15px;">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
             <button class="btn btn-back" id="backToCoursesBtn" style="display: none;" onclick="showCoursesHome()">→ הקורסים שלי</button>
             <h1 id="studentHeaderTitle" style="margin: 0; font-size: 22px;">🎓 הקורסים שלי</h1>
         </div>
-        <div><span id="studentNavGreeting">שלום, סטודנט</span> | <a href="/" style="color: #fff; text-decoration: underline;">יציאה</a></div>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <button class="btn btn-lecturer" id="backToLecturerModeBtn" style="display: none;" onclick="window.location.href='/lecturer.html'">👨‍🏫 חזרה לתצוגת מרצה</button>
+            <span id="studentNavGreeting">שלום, סטודנט</span> |
+            <a href="/" onclick="localStorage.clear()" style="color: #fff; text-decoration: underline;">יציאה</a>
+        </div>
     </div>
 
     <div class="container">
-        <!-- כניסה לשיעור חי -->
         <div class="qr-section">
             <h2 style="margin-top: 0; color: #17a2b8;">נוכח בכיתה?</h2>
             <p>סרוק את קוד ה-QR מהלוח כדי להירשם כנוכח ולהשתתף בשיעור (מותנה ברישום לקורס).</p>
             <button class="btn" style="font-size: 18px; padding: 12px 25px;" onclick="window.location.href='/student.html'">📷 סרוק QR וכנס לשיעור</button>
         </div>
 
-        <!-- מסך 1: רשימת הקורסים שאליהם הסטודנט רשום -->
         <div id="myCoursesSection">
             <h3 style="color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px;">📚 הקורסים שאני רשום אליהם</h3>
             <div id="studentCoursesGrid" class="courses-grid">
@@ -68,7 +76,6 @@
             </div>
         </div>
 
-        <!-- מסך 2: תוך קורס ספציפי -->
         <div id="singleCourseSection" style="display: none;">
             <div id="active-surveys-section" style="display: none;">
                 <h3 style="color: #856404;">📋 סקר פעיל מהמרצה (<span id="studentSurveyTimer"></span>)</h3>
@@ -91,14 +98,36 @@
         let votedSurveyIds = new Set();
         let surveyPollTimer = null;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        async function initStudentDashboard() {
             if (!studentEmail) {
                 window.location.href = '/';
                 return;
             }
             document.getElementById('studentNavGreeting').innerText = `שלום, ${studentName}`;
-            loadEnrolledCourses();
-        });
+            checkIfUserIsAlsoLecturer();
+            if (selectedCourseName) {
+                await enterCourse(selectedCourseName);
+            } else {
+                await loadEnrolledCourses();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initStudentDashboard);
+        window.addEventListener('pageshow', initStudentDashboard);
+
+        async function checkIfUserIsAlsoLecturer() {
+            if (localStorage.getItem('user_role') === 'lecturer') {
+                document.getElementById('backToLecturerModeBtn').style.display = 'inline-block';
+                return;
+            }
+            try {
+                const res = await fetch(`/api/lecturer/courses?lecturer_id=${encodeURIComponent(studentEmail)}`);
+                const data = await res.json();
+                if ((data.courses || []).length > 0) {
+                    document.getElementById('backToLecturerModeBtn').style.display = 'inline-block';
+                }
+            } catch (e) {}
+        }
 
         function escapeHtml(str) {
             return String(str || '')
@@ -116,11 +145,10 @@
             return '📄';
         }
 
-        // --- 1. טעינת רשימת הקורסים של הסטודנט בלבד ---
         async function loadEnrolledCourses() {
             const grid = document.getElementById('studentCoursesGrid');
             try {
-                const res = await fetch(`/api/student/courses?student_email=${encodeURIComponent(studentEmail)}`);
+                const res = await fetch(`/api/student/courses?student_email=${encodeURIComponent(studentEmail)}&_t=${Date.now()}`);
                 const data = await res.json();
                 const courses = data.courses || [];
                 grid.innerHTML = '';
@@ -163,6 +191,13 @@
         }
 
         async function enterCourse(courseName) {
+            const existsRes = await fetch(`/api/courses/exists?course_name=${encodeURIComponent(courseName)}`);
+            const existsData = await existsRes.json();
+            if (!existsData.exists) {
+                showCoursesHome();
+                return;
+            }
+
             selectedCourseName = courseName;
             localStorage.setItem('course_name', courseName);
 
@@ -189,7 +224,6 @@
             }
         }
 
-        // --- 2. בדיקת סקרים פעילים בקורס הנבחר ---
         async function pollActiveSurvey() {
             if (!selectedCourseName) return;
             try {
@@ -252,7 +286,6 @@
             }
         }
 
-        // --- 3. טעינת שיעורים וקבצים של הקורס ---
         async function loadStudentLessons(courseName) {
             const container = document.getElementById('student-lessons-container');
             try {
@@ -398,9 +431,7 @@
                 if (!res.ok) throw new Error(data.detail || "שגיאה בשליחת המייל");
 
                 document.getElementById(`email_body_${lessonId}`).value = '';
-                statusEl.innerHTML = data.test_mode
-                    ? `<span style="color: #856404; font-weight: bold;">✅ מצב בדיקה: המייל נשלח לתיבה שלך (${escapeHtml(data.delivered_to)}) במקום אל ${escapeHtml(data.intended_lecturer)}!</span>`
-                    : `<span style="color: #28a745; font-weight: bold;">✅ השאלה נשלחה בהצלחה אל ${escapeHtml(data.intended_lecturer)}!</span>`;
+                statusEl.innerHTML = `<span style="color: #28a745; font-weight: bold;">✅ השאלה נשלחה בהצלחה אל ${escapeHtml(data.intended_lecturer)}!</span>`;
 
                 setTimeout(() => {
                     document.getElementById(`email_${lessonId}`).style.display = 'none';

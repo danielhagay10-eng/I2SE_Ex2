@@ -21,7 +21,7 @@ from dashboard_api import dashboard_router
 
 init_db()
 
-app = FastAPI(title="Teaching Tool API")
+app = FastAPI(title="SmartLMS API")
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
@@ -34,6 +34,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def disable_browser_cache(request: Request, call_next):
+    """מונע שמירת עמודים ונתוני API בזיכרון המטמון של הדפדפן בעת לחיצה על כפתור 'חזור'."""
+    response = await call_next(request)
+    if not request.url.path.startswith("/uploads"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 
 def _get_admin_credentials():
@@ -53,12 +64,17 @@ def _verify_admin_header(x_admin_token: Optional[str]):
         raise HTTPException(status_code=401, detail="אין הרשאת מנהל — נא להתחבר מחדש")
 
 
+def _fetch_google_token_info(id_token: str) -> dict:
+    verify_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={urllib.parse.quote(id_token)}"
+    with urllib.request.urlopen(verify_url, timeout=10) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
 def _resolve_role_and_sync_user(cursor, email: str, first_name: str, last_name: str) -> tuple[str, str]:
     clean_email = email.strip().lower()
     cursor.execute("SELECT full_name FROM approved_lecturers WHERE LOWER(email) = ?", (clean_email,))
     lec_row = cursor.fetchone()
 
-    # מי שמופיע ברשימת המרצים של המנהל -> מרצה; כל השאר -> תלמיד
     role = "lecturer" if lec_row else "student"
 
     if lec_row and lec_row["full_name"]:
@@ -109,11 +125,6 @@ async def serve_google_login(request: Request):
     )
 
 
-@app.get("/id-login")
-async def serve_id_login(request: Request):
-    return templates.TemplateResponse(request, "login.html")
-
-
 @app.get("/admin")
 async def serve_admin_page(request: Request):
     return templates.TemplateResponse(request, "admin.html")
@@ -144,7 +155,7 @@ async def serve_student_live(request: Request):
     return templates.TemplateResponse(request, "student.html")
 
 
-# --- 1. התחברות אמיתית באמצעות Google ---
+# --- 1. התחברות אמיתית באמצעות Google OAuth ---
 class GoogleTokenRequest(BaseModel):
     token: str
 
@@ -155,9 +166,7 @@ async def verify_google_token(data: GoogleTokenRequest):
         raise HTTPException(status_code=400, detail="חסר טוקן אימות של Google")
 
     try:
-        verify_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={urllib.parse.quote(data.token)}"
-        with urllib.request.urlopen(verify_url, timeout=10) as resp:
-            token_info = json.loads(resp.read().decode("utf-8"))
+        token_info = _fetch_google_token_info(data.token)
     except Exception:
         raise HTTPException(status_code=401, detail="אימות חשבון Google נכשל או שפג תוקף ההתחברות")
 
@@ -186,9 +195,9 @@ async def verify_google_token(data: GoogleTokenRequest):
     }
 
 
-# --- 2. התחברות דמו סגורה ומאובטחת (חסומה לחשבונות אמיתיים) ---
+# --- 2. התחברות דמו סגורה ומאובטחת ---
 class MockLoginRequest(BaseModel):
-    demo_type: str  # "lecturer" או "student"
+    demo_type: str
 
 
 @app.post("/auth/mock-login")
@@ -210,7 +219,6 @@ async def mock_login(data: MockLoginRequest):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # אבטחת מידע: מוודא שחשבון הדמו אינו כתובת של מרצה אמיתי מהרשימה
     cursor.execute("SELECT 1 FROM approved_lecturers WHERE LOWER(email) = ?", (email,))
     if cursor.fetchone():
         conn.close()
@@ -234,31 +242,7 @@ async def mock_login(data: MockLoginRequest):
     }
 
 
-class LoginRequest(BaseModel):
-    user_id: str
-
-
-@app.post("/login")
-async def login(data: LoginRequest):
-    email = data.user_id.strip().lower()
-    if not email:
-        raise HTTPException(status_code=400, detail="נא להזין מזהה משתמש")
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    role, full_name = _resolve_role_and_sync_user(cursor, email, email.split("@")[0], "")
-    conn.commit()
-    conn.close()
-
-    return {
-        "status": "success",
-        "role": role,
-        "name": full_name,
-        "email": email
-    }
-
-
-# --- 3. ממשק מנהל מערכת (Admin - שם משתמש וסיסמה שאינם של Google + העלאת Excel מרצים) ---
+# --- 3. ממשק מנהל מערכת (Admin) ---
 class AdminLoginRequest(BaseModel):
     username: str
     password: str
@@ -371,7 +355,6 @@ async def upload_lecturers_excel(
     cursor = conn.cursor()
     now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
 
-    # החלפת רשימת המרצים המאושרת ברשימה החדשה מהאקסל
     cursor.execute("DELETE FROM approved_lecturers")
     for email, full_name in lecturers.items():
         cursor.execute(
@@ -386,7 +369,6 @@ async def upload_lecturers_excel(
             (email, parts[0], parts[1] if len(parts) > 1 else "")
         )
 
-    # כל מי שלא מופיע באקסל המרצים מוגדר אוטומית כתלמיד
     placeholders = ",".join("?" for _ in lecturers)
     cursor.execute(
         f"UPDATE users SET role = 'student' WHERE LOWER(id) NOT IN ({placeholders})",

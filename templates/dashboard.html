@@ -6,8 +6,11 @@
     <title>דשבורד מרצה - הקורסים שלי</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
-        .navbar { background-color: #004085; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .navbar { background-color: #004085; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .navbar h1 { margin: 0; font-size: 24px; }
+        .nav-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .switch-role-btn { background: #17a2b8; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; }
+        .switch-role-btn:hover { background: #138496; }
         
         .container { max-width: 960px; margin: 40px auto; padding: 0 20px; text-align: center; }
         h2 { color: #333; margin-bottom: 10px; font-size: 28px; }
@@ -46,13 +49,22 @@
             justify-content: center; font-size: 21px; font-weight: bold; min-height: 160px;
         }
         .add-course:hover { background: #c8e6c9; border-color: #388e3c; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 12px 16px; }
+            .container { margin: 20px auto; padding: 0 12px; }
+        }
     </style>
 </head>
 <body>
 
     <div class="navbar">
         <h1>🎓 SmartLMS</h1>
-        <div class="user-info"><span id="lecturerGreeting">שלום, מרצה</span> | <a href="/" style="color: #ffcccc; text-decoration: none;">התנתק</a></div>
+        <div class="nav-right">
+            <button id="switchToStudentBtn" class="switch-role-btn" style="display: none;" onclick="window.location.href='/student_dashboard.html'">🎓 הקורסים שלי כסטודנט</button>
+            <span id="lecturerGreeting">שלום, מרצה</span> |
+            <a href="/" onclick="localStorage.clear()" style="color: #ffcccc; text-decoration: none;">התנתק</a>
+        </div>
     </div>
 
     <div class="container">
@@ -70,14 +82,19 @@
         const lecturerEmail = localStorage.getItem('user_email') || '';
         const lecturerName = localStorage.getItem('user_name') || 'מרצה';
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function initLecturerPage() {
             if (!lecturerEmail) {
                 window.location.href = '/';
                 return;
             }
             document.getElementById('lecturerGreeting').innerText = `שלום, ${lecturerName} (מרצה)`;
             loadLecturerCourses();
-        });
+            checkDualRoleStudentCourses();
+        }
+
+        document.addEventListener('DOMContentLoaded', initLecturerPage);
+        // רענון אוטומטי גם כאשר חוזרים אחורה בדפדפן (מונע הצגת קורס שנמחק)
+        window.addEventListener('pageshow', initLecturerPage);
 
         function escapeHtml(str) {
             return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -90,6 +107,21 @@
             window.location.href = '/course_dashboard.html';
         }
 
+        async function checkDualRoleStudentCourses() {
+            try {
+                const res = await fetch(`/api/student/courses?student_email=${encodeURIComponent(lecturerEmail)}`);
+                const data = await res.json();
+                const enrolled = data.courses || [];
+                const btn = document.getElementById('switchToStudentBtn');
+                if (enrolled.length > 0) {
+                    btn.style.display = 'inline-block';
+                    btn.innerText = `🎓 מעבר לתצוגת סטודנט (${enrolled.length})`;
+                } else {
+                    btn.style.display = 'none';
+                }
+            } catch (e) {}
+        }
+
         async function loadLecturerCourses() {
             const grid = document.getElementById('courseList');
             const addCard = document.getElementById('addCourseCard');
@@ -98,7 +130,7 @@
             Array.from(grid.querySelectorAll('.existing-course')).forEach(el => el.remove());
 
             try {
-                const res = await fetch(`/api/lecturer/courses?lecturer_id=${encodeURIComponent(lecturerEmail)}`);
+                const res = await fetch(`/api/lecturer/courses?lecturer_id=${encodeURIComponent(lecturerEmail)}&_t=${Date.now()}`);
                 const data = await res.json();
                 const courses = data.courses || [];
 
@@ -179,6 +211,11 @@
                 });
                 const data = await res.json();
                 if (!res.ok) return alert(data.detail || 'שגיאה במחיקת הקורס');
+
+                if (localStorage.getItem('course_name') === courseName) {
+                    localStorage.removeItem('course_name');
+                    localStorage.removeItem('course_id');
+                }
                 loadLecturerCourses();
             } catch (err) {
                 alert('שגיאת תקשורת מול השרת');
