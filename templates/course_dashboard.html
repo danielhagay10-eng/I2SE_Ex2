@@ -9,40 +9,41 @@
         .navbar { background-color: #004085; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
         .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
         
-        .btn { background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .btn { background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; }
         .btn:hover { background: #0056b3; }
         .btn-danger { background: #dc3545; }
         .btn-success { background: #28a745; }
         .btn-warning { background: #ffc107; color: black; font-weight: bold; }
         .btn-live { background-color: #28a745; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-right: 15px; }
 
-        /* לשוניות */
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
         .tab-btn { background: transparent; border: none; padding: 10px 20px; cursor: pointer; font-size: 18px; font-weight: bold; color: #555; }
         .tab-btn.active { color: #007bff; border-bottom: 3px solid #007bff; }
         .tab-content { display: none; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .tab-content.active { display: block; }
 
-        /* טבלת סטודנטים */
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { padding: 12px; text-align: right; border-bottom: 1px solid #ddd; }
         th { background-color: #f8f9fa; }
         
-        /* חומרי לימוד */
+        .staff-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 18px; margin-top: 30px; }
+        .staff-inputs { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        .staff-inputs input, .staff-inputs select { padding: 8px 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+
         .lesson-block { border: 1px solid #e1e8ed; border-radius: 8px; margin-bottom: 20px; padding: 20px; background: #fafbfc; }
         .lesson-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 15px; }
-        .lesson-topic { font-size: 20px; font-weight: bold; border: none; background: transparent; color: #333; width: 80%; }
+        .lesson-topic { font-size: 20px; font-weight: bold; border: none; background: transparent; color: #333; width: 70%; }
         .lesson-topic:focus { outline: none; border-bottom: 2px solid #007bff; }
-        .file-drop { border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 5px; background: white; margin-top: 10px; cursor: pointer; }
-        .file-item { display: inline-block; background: #e9ecef; padding: 8px 12px; border-radius: 20px; margin: 5px 0 5px 10px; font-size: 14px; border: 1px solid #ccc; }
+        .file-drop { border: 2px dashed #ccc; padding: 15px; text-align: center; border-radius: 5px; background: white; margin-top: 10px; cursor: pointer; }
+        .file-item { display: inline-block; background: #e9ecef; padding: 8px 12px; border-radius: 20px; margin: 5px 0 5px 10px; font-size: 14px; border: 1px solid #ccc; text-decoration: none; color: #333; }
+        .file-item:hover { background: #dee2e6; }
 
-        /* סקרים */
         .survey-card { border: 1px solid #ddd; border-top: 8px solid #673ab7; border-radius: 10px; padding: 25px; margin-bottom: 20px; }
-        .survey-question { width: 100%; border: none; border-bottom: 1px solid #ccc; font-size: 22px; padding: 10px 0; margin-bottom: 20px; background: transparent; }
+        .survey-question { width: 100%; border: none; border-bottom: 1px solid #ccc; font-size: 20px; padding: 10px 0; margin-bottom: 15px; background: transparent; }
         .survey-option { display: flex; align-items: center; margin-bottom: 10px; }
         .survey-option input[type="text"] { flex-grow: 1; border: none; border-bottom: 1px solid #ddd; padding: 8px; margin-right: 10px; font-size: 16px; }
         .timer-control { background: #e3f2fd; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .live-survey-box { display: none; text-align: center; background: #e8f5e9; border: 2px solid #4caf50; padding: 30px; border-radius: 10px; margin-bottom: 20px; }
+        .live-survey-box { display: none; text-align: center; background: #e8f5e9; border: 2px solid #4caf50; padding: 25px; border-radius: 10px; margin-bottom: 20px; }
         
         .time-input { padding: 8px; font-size: 16px; width: 60px; text-align: center; border: 1px solid #ccc; border-radius: 5px; }
         .time-select { padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
@@ -52,70 +53,98 @@
 
     <div class="navbar">
         <div style="display: flex; align-items: center;">
-            <h1 style="margin: 0; margin-left: 20px;">ניהול קורס</h1>
-            <button class="btn-live" onclick="window.location.href='/live_session.html'">🟢 פתח QR להתחלת שיעור</button>
+            <h1 id="courseHeaderTitle" style="margin: 0; margin-left: 20px;">ניהול קורס</h1>
+            <button class="btn-live" onclick="startLiveClass()">🟢 פתח QR להתחלת שיעור</button>
         </div>
         <button class="btn btn-danger" onclick="window.location.href='/lecturer.html'">חזור לראשי</button>
     </div>
 
     <div class="container">
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('students', this)">רשימת סטודנטים</button>
+            <button class="tab-btn active" onclick="switchTab('students', this)">סטודנטים וצוות הקורס</button>
             <button class="tab-btn" onclick="switchTab('materials', this)">חומרי לימוד</button>
             <button class="tab-btn" onclick="switchTab('surveys', this)">סקרים בזמן אמת</button>
-            <button class="tab-btn" onclick="switchTab('emails', this)">דיוור למייל</button>
+            <button class="tab-btn" onclick="switchTab('emails', this)">דיוור למייל 📧</button>
         </div>
 
-        <!-- 1. סטודנטים -->
+        <!-- 1. סטודנטים וצוות הוראה -->
         <div id="students" class="tab-content active">
-            <div style="display: flex; justify-content: space-between;">
-                <h3>עריכת נתוני סטודנטים</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div>
-                    <button class="btn btn-success" onclick="alert('מוריד קובץ...')">הורד כקובץ Excel 📥</button>
-                    <button class="btn" style="background: #17a2b8;" onclick="document.getElementById('excelUploadInput').click()">העלה אקסל חדש (דרוס קיים) 📤</button>
-                    <input type="file" id="excelUploadInput" accept=".xlsx" style="display: none;" onchange="handleExcelUpload(this)">
+                    <h3 style="margin: 0;">נתוני נוכחות והשתתפות סטודנטים בקורס</h3>
+                    <span id="courseSessionsSummary" style="font-size: 14px; color: #555;">סה"כ שיעורים שהתקיימו בקורס: 0</span>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <input type="file" id="excelRosterInput" accept=".xlsx,.xlsm" style="display: none;" onchange="uploadStudentsExcel(this)">
+                    <button class="btn" style="background: #6f42c1; font-weight: bold;" onclick="document.getElementById('excelRosterInput').click()">📤 העלה רשימת משתתפים (Excel)</button>
+                    <button class="btn" onclick="loadStudents()">🔄 רענן נתונים</button>
+                    <button class="btn btn-success" onclick="exportStudentsCSV()">הורד כקובץ Excel/CSV 📥</button>
                 </div>
             </div>
+
+            <div id="excelUploadStatus" style="margin-top: 12px; display: none;"></div>
+
             <table id="studentsTable">
-                <tr>
-                    <th>אימייל / מזהה</th>
-                    <th>שם מלא</th>
-                    <th>אחוזי נוכחות</th>
-                    <th>פעולות</th>
-                </tr>
-                <tr class="student-data-row">
-                    <td contenteditable="true" placeholder="אימייל...">student_example@ariel.ac.il</td>
-                    <td contenteditable="true" placeholder="שם...">ישראל ישראלי</td>
-                    <td>0%</td>
-                    <td>
-                        <button class="btn btn-warning">שמור</button>
-                        <button class="btn btn-danger" onclick="this.closest('tr').remove()">מחק</button>
-                    </td>
-                </tr>
+                <thead>
+                    <tr>
+                        <th>אימייל / מזהה</th>
+                        <th>שם מלא</th>
+                        <th>שיעורים שנכח (מתוך סה"כ בקורס)</th>
+                        <th>אחוזי נוכחות</th>
+                        <th>נקודות השתתפות ⭐</th>
+                    </tr>
+                </thead>
+                <tbody id="studentsTableBody">
+                    <tr><td colspan="5" style="text-align: center;">טוען נתוני סטודנטים...</td></tr>
+                </tbody>
             </table>
+
+            <!-- ניהול סגל הקורס (מרצה ומתרגלים שהתלמידים יכולים לבחור לשלוח להם מייל) -->
+            <div class="staff-box">
+                <h4 style="margin: 0 0 6px 0;">👨‍🏫 צוות הקורס (נמענים זמינים לשאלות סטודנטים במייל)</h4>
+                <p style="margin: 0 0 10px 0; font-size: 13px; color: #555;">מתרגלים שתוסיף כאן (או שזוהו אוטומטית מקובץ ה-Excel) יופיעו ברשימת הבחירה של הסטודנטים בעת שליחת שאלה.</p>
+                <div class="staff-inputs">
+                    <input type="email" id="staffEmailInput" placeholder="אימייל של מתרגל/ת..." style="flex: 2;">
+                    <input type="text" id="staffNameInput" placeholder="שם מלא..." style="flex: 1;">
+                    <select id="staffRoleInput">
+                        <option value="מתרגל">מתרגל/ת</option>
+                        <option value="מרצה שותף">מרצה שותף/ה</option>
+                    </select>
+                    <button class="btn btn-success" onclick="addCourseStaff()">+ הוסף לצוות</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>שם</th>
+                            <th>אימייל</th>
+                            <th>תפקיד</th>
+                            <th>פעולה</th>
+                        </tr>
+                    </thead>
+                    <tbody id="staffTableBody"></tbody>
+                </table>
+            </div>
         </div>
 
         <!-- 2. חומרי לימוד -->
         <div id="materials" class="tab-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3>היסטוריית שיעורים וחומרים</h3>
+                <h3>היסטוריית שיעורים וחומרים (משותף לסטודנטים)</h3>
                 <button class="btn btn-success" onclick="addNewLesson()">+ הוסף שיעור חדש</button>
             </div>
             
-            <div id="lessons-container">
-                <p id="no-lessons-msg" style="text-align: center; color: #777; font-size: 18px; margin-top: 40px;">אין שיעורים קודמים. לחץ על "+ הוסף שיעור חדש" כדי להתחיל.</p>
-            </div>
+            <div id="lessons-container"></div>
         </div>
 
         <!-- 3. סקרים -->
         <div id="surveys" class="tab-content">
-            
             <div id="live-survey-box" class="live-survey-box">
                 <h2 style="color: #2e7d32; margin-top: 0;">🔴 סקר פעיל באוויר!</h2>
                 <p style="font-size: 20px;">זמן נותר: <span id="countdown-display" style="font-weight: bold; font-size: 28px; color: #dc3545;">00:00</span></p>
+                <div id="live-survey-results" style="text-align: right; background: white; padding: 15px; border-radius: 8px; margin: 15px auto; max-width: 600px;"></div>
                 <div style="margin-top: 20px;">
-                    <button class="btn btn-warning" onclick="alert('נוספו 2 דקות לסקר!')">+ הארך זמן</button>
-                    <button class="btn btn-danger" onclick="endSurvey()">סגור סקר ופתח חדש 🛑</button>
+                    <button class="btn btn-warning" onclick="extendActiveSurvey()">+ הארך ב-2 דקות</button>
+                    <button class="btn btn-danger" onclick="endSurvey()">סגור סקר ושמור להיסטוריה 🛑</button>
                 </div>
             </div>
 
@@ -133,17 +162,13 @@
                 
                 <button class="btn" style="background: #e3f2fd; color: #007bff; font-weight: bold; width: 100%; margin-bottom: 20px; padding: 10px;" onclick="addQuestion()">+ הוסף שאלה נוספת לאותו הסקר</button>
                 
-                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                
                 <div class="timer-control">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <strong>הגבלת זמן:</strong> 
                         <input type="number" id="surveyTimeValue" class="time-input" value="3" min="1">
-                        <select class="time-select">
-                            <option value="minutes">דקות</option>
-                            <option value="hours">שעות</option>
-                            <option value="days">ימים</option>
-                            <option value="weeks">שבועות</option>
+                        <select id="surveyTimeUnit" class="time-select">
+                            <option value="60">דקות</option>
+                            <option value="3600">שעות</option>
                         </select>
                     </div>
                     <div>
@@ -152,24 +177,57 @@
                 </div>
             </div>
 
-            <div id="survey-history-container" style="margin-top: 40px; display: none;">
+            <div id="survey-history-container" style="margin-top: 30px;">
                 <h3>📊 היסטוריית סקרים (סקרים סגורים)</h3>
+                <div id="survey-history-list"></div>
             </div>
         </div>
 
         <!-- 4. דיוור למייל -->
         <div id="emails" class="tab-content">
-            <h3>שליחת הודעה לתיבות האימייל של הכיתה</h3>
+            <h3>📤 שליחת מייל לכל הסטודנטים בקורס</h3>
+            <p style="color: #555; font-size: 15px;">ההודעה תישלח ישירות לתיבות האימייל של כל הסטודנטים שהועלו לקורס זה (בעותק מוסתר BCC).</p>
             <div style="border: 1px solid #ddd; padding: 25px; border-radius: 10px; background: white;">
-                <input type="text" placeholder="נושא ההודעה..." style="width: 100%; padding: 12px; margin-bottom: 15px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px;">
-                <textarea placeholder="תוכן ההודעה..." style="width: 100%; height: 150px; padding: 12px; margin-bottom: 15px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px;"></textarea>
-                <button class="btn btn-success" style="font-size: 18px; padding: 10px 30px;">שלח מייל לכל הקורס 📧</button>
+                <input type="text" id="broadcastSubject" placeholder="נושא המייל..." style="width: 100%; padding: 12px; margin-bottom: 15px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+                <textarea id="broadcastBody" placeholder="תוכן המייל לכל הכיתה..." style="width: 100%; height: 150px; padding: 12px; margin-bottom: 15px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;"></textarea>
+                <button class="btn btn-success" id="broadcastBtn" style="font-size: 17px; padding: 10px 28px;" onclick="sendBroadcastEmail()">שלח מייל לכל הקורס 📧</button>
+                <div id="broadcastStatus" style="margin-top: 15px; display: none;"></div>
             </div>
         </div>
     </div>
 
     <script>
-        // ניווט לשוניות
+        const currentCourse = localStorage.getItem('course_name') || '';
+        let activeSurveyId = null;
+        let surveyPollInterval = null;
+        const draftFilesMap = {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!currentCourse) {
+                window.location.href = '/lecturer.html';
+                return;
+            }
+            document.getElementById('courseHeaderTitle').innerText = `ניהול קורס: ${currentCourse}`;
+            loadStudents();
+            loadCourseStaff();
+            loadLessons();
+            checkActiveSurvey();
+            loadSurveyHistory();
+        });
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function startLiveClass() {
+            localStorage.setItem('course_name', currentCourse);
+            window.location.href = '/live_session.html';
+        }
+
         function switchTab(tabId, btnElement) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -177,88 +235,268 @@
             btnElement.classList.add('active');
         }
 
-        // דריסת אקסל קודם
-        function handleExcelUpload(input) {
-            if(input.files.length > 0) {
-                alert('הקובץ "' + input.files[0].name + '" מוחק כעת את הנתונים הישנים ומחליף אותם בחדשים.');
-                
-                const table = document.getElementById('studentsTable');
-                while(table.rows.length > 1) {
-                    table.deleteRow(1);
-                }
-                
-                const newRow = table.insertRow(-1);
-                newRow.className = "student-data-row";
-                newRow.innerHTML = `
-                    <td contenteditable="true">new_student@ariel.ac.il</td>
-                    <td contenteditable="true">סטודנט חדש (מהקובץ)</td>
-                    <td>0%</td>
-                    <td>
-                        <button class="btn btn-warning">שמור</button>
-                        <button class="btn btn-danger" onclick="this.closest('tr').remove()">מחק</button>
-                    </td>
-                `;
+        function getFileIcon(name) {
+            const lower = name.toLowerCase();
+            if (lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.mov')) return '🎥';
+            if (lower.endsWith('.pdf')) return '📕';
+            if (lower.endsWith('.ppt') || lower.endsWith('.pptx')) return '🪧';
+            if (lower.endsWith('.doc') || lower.endsWith('.docx')) return '📝';
+            return '📄';
+        }
+
+        // --- 1. העלאת אקסל, סטודנטים וצוות הקורס ---
+        async function uploadStudentsExcel(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const statusBox = document.getElementById('excelUploadStatus');
+            statusBox.style.display = 'block';
+            statusBox.innerHTML = '<div style="background: #e3f2fd; padding: 10px; border-radius: 6px;">⏳ קורא את קובץ האקסל ומעדכן את רשימת הסטודנטים וצוות הקורס...</div>';
+
+            const formData = new FormData();
+            formData.append('course_name', currentCourse);
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/api/course/students/upload-excel', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'שגיאה בקריאת קובץ האקסל');
+
+                statusBox.innerHTML = `<div style="background: #d4edda; color: #155724; padding: 12px; border-radius: 6px;">✅ הרשימה עודכנה! נטענו <strong>${data.imported_count}</strong> סטודנטים (ו-<strong>${data.staff_imported_count}</strong> אנשי סגל).</div>`;
+                loadStudents();
+                loadCourseStaff();
+            } catch (err) {
+                statusBox.innerHTML = `<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px;">❌ ${escapeHtml(err.message)}</div>`;
+            } finally {
+                input.value = '';
             }
         }
 
-        // הוספת חומרים עם זיהוי כל סוגי הקבצים
-        let lessonCounter = 0;
-        function addNewLesson() {
-            document.getElementById('no-lessons-msg').style.display = 'none';
-            lessonCounter++;
+        async function loadCourseStaff() {
+            const tbody = document.getElementById('staffTableBody');
+            try {
+                const res = await fetch(`/api/course/staff?course_name=${encodeURIComponent(currentCourse)}`);
+                const data = await res.json();
+                tbody.innerHTML = '';
+
+                (data.staff || []).forEach(member => {
+                    const actionHtml = member.id === 0
+                        ? '<span style="color: #777; font-size: 13px;">מרצה ראשי</span>'
+                        : `<button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="removeCourseStaff(${member.id})">הסר</button>`;
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${escapeHtml(member.name)}</td>
+                            <td>${escapeHtml(member.email)}</td>
+                            <td>${escapeHtml(member.role_title)}</td>
+                            <td>${actionHtml}</td>
+                        </tr>
+                    `;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function addCourseStaff() {
+            const email = document.getElementById('staffEmailInput').value.trim();
+            const fullName = document.getElementById('staffNameInput').value.trim();
+            const roleTitle = document.getElementById('staffRoleInput').value;
+            if (!email) return alert('נא להזין כתובת אימייל');
+
+            const res = await fetch('/api/course/staff', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    course_name: currentCourse,
+                    staff_email: email,
+                    full_name: fullName,
+                    role_title: roleTitle
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) return alert(data.detail || 'שגיאה בהוספת מתרגל');
+
+            document.getElementById('staffEmailInput').value = '';
+            document.getElementById('staffNameInput').value = '';
+            loadCourseStaff();
+        }
+
+        async function removeCourseStaff(staffId) {
+            await fetch(`/api/course/staff/${staffId}`, { method: 'DELETE' });
+            loadCourseStaff();
+        }
+
+        async function loadStudents() {
+            const tbody = document.getElementById('studentsTableBody');
+            const summaryEl = document.getElementById('courseSessionsSummary');
+            try {
+                const res = await fetch(`/api/course/students?course_name=${encodeURIComponent(currentCourse)}`);
+                const data = await res.json();
+                tbody.innerHTML = '';
+                summaryEl.innerText = `סה"כ שיעורים שהתקיימו בקורס זה: ${data.total_sessions}`;
+
+                if (!data.students || data.students.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #555; padding: 25px;">
+                                טרם הועלתה רשימת סטודנטים לקורס <strong>${escapeHtml(currentCourse)}</strong>.<br>
+                                לחץ על <strong>"📤 העלה רשימת משתתפים (Excel)"</strong> למעלה כדי לטעון את תלמידי הקורס.
+                            </td>
+                        </tr>`;
+                    return;
+                }
+
+                data.students.forEach(st => {
+                    const color = st.percentage >= 80 ? '#28a745' : (st.percentage >= 50 ? '#ffc107' : '#dc3545');
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${escapeHtml(st.student_id)}</td>
+                            <td>${escapeHtml(st.name)}</td>
+                            <td><strong>${st.attended}</strong> מתוך ${st.total_sessions}</td>
+                            <td style="font-weight: bold; color: ${color};">${st.percentage}%</td>
+                            <td style="font-weight: bold; color: #007bff;">${st.points} נק'</td>
+                        </tr>
+                    `;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function exportStudentsCSV() {
+            const rows = Array.from(document.querySelectorAll("#studentsTable tr"));
+            const csv = rows.map(r => Array.from(r.querySelectorAll("th, td")).map(c => `"${c.innerText}"`).join(",")).join("\n");
+            const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `attendance_${currentCourse}.csv`;
+            link.click();
+        }
+
+        // --- 2. ניהול שיעורים והעלאת קבצים אמיתיים ---
+        async function loadLessons() {
             const container = document.getElementById('lessons-container');
+            try {
+                const res = await fetch(`/api/lessons?course_name=${encodeURIComponent(currentCourse)}`);
+                const data = await res.json();
+                container.innerHTML = '';
+
+                if (!data.lessons || data.lessons.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #777; font-size: 18px; margin-top: 30px;">אין שיעורים שמורים. לחץ על "+ הוסף שיעור חדש" כדי להעלות סרטונים או מצגות לתלמידים.</p>';
+                    return;
+                }
+
+                data.lessons.forEach(lesson => {
+                    const filesHtml = lesson.materials.map(m => {
+                        const icon = getFileIcon(m.name);
+                        return m.url
+                            ? `<a href="${m.url}" target="_blank" class="file-item">${icon} ${escapeHtml(m.name)}</a>`
+                            : `<span class="file-item">${icon} ${escapeHtml(m.name)}</span>`;
+                    }).join('');
+
+                    container.innerHTML += `
+                        <div class="lesson-block">
+                            <div class="lesson-header">
+                                <div>
+                                    <span style="font-size: 12px; color: #777;">תאריך: ${escapeHtml(lesson.date_str)}</span>
+                                    <h4 style="margin: 5px 0 0 0; font-size: 19px;">${escapeHtml(lesson.title)}</h4>
+                                </div>
+                                <button class="btn btn-danger" onclick="deleteLesson(${lesson.id})">מחק שיעור</button>
+                            </div>
+                            <div>${filesHtml || '<span style="color:#888; font-size:14px;">לא צורפו קבצים</span>'}</div>
+                        </div>
+                    `;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        let newLessonDraftCounter = 0;
+        function addNewLesson() {
+            newLessonDraftCounter++;
+            const container = document.getElementById('lessons-container');
+            const today = new Date().toLocaleDateString('he-IL');
+            const draftId = `draft_${newLessonDraftCounter}`;
+            draftFilesMap[draftId] = [];
+
             const block = document.createElement('div');
             block.className = 'lesson-block';
-            const today = new Date().toLocaleDateString('he-IL');
-
+            block.id = draftId;
+            block.style.borderColor = '#28a745';
             block.innerHTML = `
                 <div class="lesson-header">
                     <div style="width: 70%;">
-                        <span style="font-size: 12px; color: #777;">שיעור נפתח בתאריך: ${today}</span><br>
-                        <input type="text" class="lesson-topic" placeholder="הקלד את נושא השיעור כאן...">
+                        <span style="font-size: 12px; color: #28a745; font-weight: bold;">שיעור חדש (${today})</span><br>
+                        <input type="text" class="lesson-topic" id="topic_${draftId}" placeholder="הקלד את נושא השיעור כאן...">
                     </div>
-                    <div><button class="btn btn-danger" onclick="this.closest('.lesson-block').remove()">מחק שיעור</button></div>
+                    <div>
+                        <button class="btn btn-success" id="saveBtn_${draftId}" onclick="saveLessonToDB('${draftId}', '${today}')">💾 העלה ופרסם לתלמידים</button>
+                        <button class="btn btn-danger" onclick="this.closest('.lesson-block').remove()">ביטול</button>
+                    </div>
                 </div>
-                <div id="fileList_${lessonCounter}" style="margin-bottom: 15px;"></div>
-                
-                <div class="file-drop" onclick="document.getElementById('fileUpload_${lessonCounter}').click()">
-                    לחץ כאן כדי להעלות חומרים לשיעור (וורד, וידאו, תמונות, PDF, אקסל)
-                    <input type="file" id="fileUpload_${lessonCounter}" multiple style="display: none;" onchange="handleFileUpload(this, 'fileList_${lessonCounter}')">
+                <div id="files_${draftId}" style="margin-bottom: 10px;"></div>
+                <div class="file-drop" onclick="document.getElementById('input_${draftId}').click()">
+                    לחץ כאן לבחירת קבצים אמיתיים (סרטון MP4, PDF, מצגת, תמונות)
+                    <input type="file" id="input_${draftId}" multiple style="display: none;" onchange="attachDraftFiles(this, '${draftId}')">
                 </div>
             `;
             container.insertBefore(block, container.firstChild);
         }
 
-        function handleFileUpload(input, listId) {
-            const list = document.getElementById(listId);
-            for(let i=0; i<input.files.length; i++) {
-                const file = input.files[i];
-                let icon = '📄';
-                const name = file.name.toLowerCase();
-                
-                if (name.endsWith('.mp4') || name.endsWith('.avi')) icon = '🎥';
-                else if (name.endsWith('.doc') || name.endsWith('.docx')) icon = '📝';
-                else if (name.endsWith('.xls') || name.endsWith('.xlsx')) icon = '📊';
-                else if (name.endsWith('.jpg') || name.endsWith('.png') || name.endsWith('.jpeg')) icon = '🖼️';
-                else if (name.endsWith('.pdf')) icon = '📕';
-                else if (name.endsWith('.ppt') || name.endsWith('.pptx')) icon = '🪧';
-
+        function attachDraftFiles(input, draftId) {
+            const list = document.getElementById(`files_${draftId}`);
+            for (let file of input.files) {
+                const idx = draftFilesMap[draftId].push(file) - 1;
                 const span = document.createElement('span');
                 span.className = 'file-item';
-                span.innerHTML = `${icon} ${file.name} <span style="color:red; cursor:pointer; margin-right: 8px; font-weight:bold;" onclick="this.parentElement.remove()" title="מחק קובץ">✖</span>`;
+                span.innerHTML = `${getFileIcon(file.name)} ${escapeHtml(file.name)} <span style="color:red; cursor:pointer; margin-right:6px;" onclick="draftFilesMap['${draftId}'][${idx}] = null; this.parentElement.remove()">✖</span>`;
                 list.appendChild(span);
             }
-            input.value = ''; 
+            input.value = '';
         }
 
-        // --- סקרים ---
-        let countdownInterval;
+        async function saveLessonToDB(draftId, dateStr) {
+            const title = document.getElementById(`topic_${draftId}`).value.trim();
+            if (!title) return alert("נא להזין נושא לשיעור");
 
+            const saveBtn = document.getElementById(`saveBtn_${draftId}`);
+            saveBtn.disabled = true;
+            saveBtn.innerText = "מעלה קבצים... ⏳";
+
+            const formData = new FormData();
+            formData.append("course_name", currentCourse);
+            formData.append("title", title);
+            formData.append("date_str", dateStr);
+
+            (draftFilesMap[draftId] || []).forEach(file => {
+                if (file) formData.append("files", file);
+            });
+
+            try {
+                const res = await fetch('/api/lessons/with-files', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!res.ok) throw new Error(`שגיאה בהעלאה: ${res.status}`);
+                delete draftFilesMap[draftId];
+                loadLessons();
+            } catch (err) {
+                alert(err.message);
+                saveBtn.disabled = false;
+                saveBtn.innerText = "💾 העלה ופרסם לתלמידים";
+            }
+        }
+
+        async function deleteLesson(id) {
+            await fetch(`/api/lessons/${id}`, { method: 'DELETE' });
+            loadLessons();
+        }
+
+        // --- 3. מערכת סקרים בזמן אמת ---
         function addOption(btnElement) {
             const container = btnElement.previousElementSibling;
             const div = document.createElement('div');
             div.className = 'survey-option';
-            div.innerHTML = '<input type="radio" disabled> <input type="text" placeholder="אפשרות חדשה...">';
+            div.innerHTML = '<input type="radio" disabled> <input type="text" placeholder="אפשרות נוספת...">';
             container.appendChild(div);
         }
 
@@ -269,7 +507,7 @@
             block.style.cssText = "margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 20px;";
             block.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <input type="text" class="survey-question" placeholder="הקלד את שאלת הסקר כאן..." style="width: 85%;">
+                    <input type="text" class="survey-question" placeholder="הקלד שאלה נוספת..." style="width: 85%;">
                     <button class="btn btn-danger" onclick="this.closest('.question-block').remove()">מחק שאלה</button>
                 </div>
                 <div class="optionsContainer">
@@ -281,50 +519,161 @@
             container.appendChild(block);
         }
 
-        function launchSurvey() {
-            document.getElementById('survey-creator').style.display = 'none';
-            document.getElementById('live-survey-box').style.display = 'block';
-            
-            let secondsLeft = parseInt(document.getElementById('surveyTimeValue').value) * 60; 
-            const display = document.getElementById('countdown-display');
-            
-            clearInterval(countdownInterval);
-            countdownInterval = setInterval(() => {
-                secondsLeft--;
-                let m = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
-                let s = (secondsLeft % 60).toString().padStart(2, '0');
-                display.innerText = `${m}:${s}`;
-                if (secondsLeft <= 0) {
-                    clearInterval(countdownInterval);
-                    display.innerText = "00:00 (הזמן נגמר)";
+        async function launchSurvey() {
+            const blocks = document.querySelectorAll('#survey-questions-container .question-block');
+            const questions = [];
+
+            blocks.forEach(b => {
+                const qText = b.querySelector('.survey-question').value.trim();
+                const opts = Array.from(b.querySelectorAll('.optionsContainer input[type="text"]'))
+                    .map(inp => inp.value.trim())
+                    .filter(val => val !== "");
+                if (qText && opts.length >= 2) {
+                    questions.push({ question: qText, options: opts });
                 }
-            }, 1000);
+            });
+
+            if (questions.length === 0) {
+                return alert("נא למלא שאלה ולפחות 2 אפשרויות תשובה.");
+            }
+
+            const durationSeconds = parseInt(document.getElementById('surveyTimeValue').value) * parseInt(document.getElementById('surveyTimeUnit').value);
+
+            const res = await fetch('/api/surveys/launch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    course_name: currentCourse,
+                    questions: questions,
+                    duration_seconds: durationSeconds
+                })
+            });
+
+            if (res.ok) {
+                checkActiveSurvey();
+            }
         }
 
-        function endSurvey() {
-            clearInterval(countdownInterval);
-            document.getElementById('live-survey-box').style.display = 'none';
-            document.getElementById('survey-creator').style.display = 'block';
-            
-            const historyContainer = document.getElementById('survey-history-container');
-            historyContainer.style.display = 'block';
-            const historyItem = document.createElement('div');
-            historyItem.style.cssText = 'background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-right: 5px solid #777;';
-            historyItem.innerHTML = `<strong>סקר נסגר (${new Date().toLocaleDateString()}):</strong> השאלה נשמרה במסד הנתונים.`;
-            historyContainer.appendChild(historyItem);
-            
-            document.getElementById('survey-questions-container').innerHTML = `
-                <div class="question-block" style="margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 20px;">
-                    <input type="text" class="survey-question" placeholder="הקלד את שאלת הסקר כאן...">
-                    <div class="optionsContainer">
-                        <div class="survey-option"><input type="radio" disabled> <input type="text" placeholder="אפשרות 1..."></div>
-                        <div class="survey-option"><input type="radio" disabled> <input type="text" placeholder="אפשרות 2..."></div>
+        async function checkActiveSurvey() {
+            clearInterval(surveyPollInterval);
+            const updateUI = async () => {
+                const res = await fetch(`/api/surveys/active?course_name=${encodeURIComponent(currentCourse)}`);
+                const data = await res.json();
+
+                if (!data.active) {
+                    activeSurveyId = null;
+                    document.getElementById('live-survey-box').style.display = 'none';
+                    document.getElementById('survey-creator').style.display = 'block';
+                    clearInterval(surveyPollInterval);
+                    loadSurveyHistory();
+                    return;
+                }
+
+                activeSurveyId = data.survey_id;
+                document.getElementById('survey-creator').style.display = 'none';
+                document.getElementById('live-survey-box').style.display = 'block';
+
+                const m = Math.floor(data.seconds_left / 60).toString().padStart(2, '0');
+                const s = (data.seconds_left % 60).toString().padStart(2, '0');
+                document.getElementById('countdown-display').innerText = `${m}:${s}`;
+
+                let resultsHtml = `<p><strong>סה"כ הצבעות: ${data.total_votes}</strong></p>`;
+                data.questions.forEach((q, idx) => {
+                    resultsHtml += `<div style="margin-bottom: 10px;"><strong>${escapeHtml(q.question)}</strong><ul style="margin: 5px 0;">`;
+                    q.options.forEach(opt => {
+                        const count = (data.vote_counts[idx] && data.vote_counts[idx][opt]) || 0;
+                        resultsHtml += `<li>${escapeHtml(opt)}: <strong>${count} הצבעות</strong></li>`;
+                    });
+                    resultsHtml += `</ul></div>`;
+                });
+                document.getElementById('live-survey-results').innerHTML = resultsHtml;
+            };
+
+            await updateUI();
+            surveyPollInterval = setInterval(updateUI, 2000);
+        }
+
+        async function extendActiveSurvey() {
+            if (!activeSurveyId) return;
+            await fetch(`/api/surveys/extend/${activeSurveyId}?extra_seconds=120`, { method: 'POST' });
+            checkActiveSurvey();
+        }
+
+        async function endSurvey() {
+            if (!activeSurveyId) return;
+            await fetch(`/api/surveys/close/${activeSurveyId}`, { method: 'POST' });
+            checkActiveSurvey();
+        }
+
+        async function loadSurveyHistory() {
+            const list = document.getElementById('survey-history-list');
+            const res = await fetch(`/api/surveys/history?course_name=${encodeURIComponent(currentCourse)}`);
+            const data = await res.json();
+            list.innerHTML = '';
+
+            if (!data.history || data.history.length === 0) {
+                list.innerHTML = '<p style="color: #777;">אין היסטוריית סקרים עדיין בקורס זה.</p>';
+                return;
+            }
+
+            data.history.forEach(s => {
+                let summary = s.questions.map((q, idx) => {
+                    const optsStr = q.options.map(o => `${escapeHtml(o)} (${(s.vote_counts[idx] && s.vote_counts[idx][o]) || 0})`).join(' | ');
+                    return `<div>• <strong>${escapeHtml(q.question)}:</strong> ${optsStr}</div>`;
+                }).join('');
+
+                list.innerHTML += `
+                    <div style="background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-right: 5px solid #673ab7;">
+                        <div style="font-size: 13px; color: #666;">תאריך: ${escapeHtml(s.created_at)} | סה"כ מצביעים: ${s.total_votes}</div>
+                        ${summary}
                     </div>
-                    <button class="btn" style="background: transparent; color: #673ab7; border: 1px solid #673ab7; margin-top: 10px;" onclick="addOption(this)">+ הוסף אפשרות לתשובה</button>
-                </div>
-            `;
-            
-            alert("הסקר נסגר והועבר להיסטוריה. כעת ניתן ליצור סקר חדש לגמרי.");
+                `;
+            });
+        }
+
+        // --- 4. שליחת מייל ישירה לכל הקורס ---
+        async function sendBroadcastEmail() {
+            const subject = document.getElementById('broadcastSubject').value.trim();
+            const body = document.getElementById('broadcastBody').value.trim();
+            if (!subject || !body) return alert("נא להזין נושא ותוכן למייל.");
+
+            const btn = document.getElementById('broadcastBtn');
+            const statusBox = document.getElementById('broadcastStatus');
+            btn.disabled = true;
+            btn.innerText = "שולח מייל... ⏳";
+            statusBox.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/emails/broadcast', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        course_name: currentCourse,
+                        subject: subject,
+                        body: body
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "שגיאה בשליחת המייל");
+
+                statusBox.style.display = 'block';
+                statusBox.innerHTML = data.test_mode
+                    ? `<div style="background: #fff3cd; color: #856404; padding: 12px; border-radius: 6px; border-right: 4px solid #ffc107;">
+                         ✅ <strong>מצב בדיקה פעיל:</strong> המייל נשלח בהצלחה לתיבת הבדיקה שלך (<strong>${escapeHtml(data.delivered_to)}</strong>) במקום ל-${data.students_count} סטודנטים.
+                       </div>`
+                    : `<div style="background: #d4edda; color: #155724; padding: 12px; border-radius: 6px; border-right: 4px solid #28a745;">
+                         ✅ המייל נשלח בהצלחה ל-<strong>${escapeHtml(data.delivered_to)}</strong>!
+                       </div>`;
+
+                document.getElementById('broadcastSubject').value = '';
+                document.getElementById('broadcastBody').value = '';
+            } catch (err) {
+                statusBox.style.display = 'block';
+                statusBox.innerHTML = `<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px;">❌ ${escapeHtml(err.message)}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "שלח מייל לכל הקורס 📧";
+            }
         }
     </script>
 </body>

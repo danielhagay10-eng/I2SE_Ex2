@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פאנל מנהל מערכת - ניהול מרצים</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 0; }
+        .navbar { background: #212529; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .container { max-width: 900px; margin: 35px auto; padding: 0 20px; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin-bottom: 25px; }
+        .btn { background: #007bff; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; padding: 6px 12px; font-size: 13px; }
+        input[type="text"], input[type="password"], input[type="email"] { width: 100%; padding: 11px; margin: 8px 0 16px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; box-sizing: border-box; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; }
+        .info-banner { background: #e3f2fd; border-right: 4px solid #007bff; padding: 14px; border-radius: 6px; color: #004085; margin-bottom: 20px; font-size: 15px; }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h2 style="margin: 0;">🛡️ פאנל מנהל מערכת (Admin)</h2>
+        <div>
+            <button class="btn" style="background: #6c757d;" onclick="window.location.href='/'">חזרה למסך הכניסה</button>
+            <button class="btn btn-danger" id="logoutAdminBtn" style="display: none; margin-right: 8px;" onclick="adminLogout()">התנתק</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- מסך התחברות מנהל -->
+        <div class="card" id="adminLoginCard" style="max-width: 420px; margin: 40px auto;">
+            <h3 style="margin-top: 0;">התחברות מנהל (ללא Google)</h3>
+            <label>שם משתמש:</label>
+            <input type="text" id="adminUser" placeholder="admin">
+            <label>סיסמה:</label>
+            <input type="password" id="adminPass" placeholder="••••••">
+            <button class="btn" style="width: 100%;" onclick="submitAdminLogin()">התחבר כמנהל</button>
+            <div id="adminLoginErr" style="color: #dc3545; margin-top: 12px; display: none;"></div>
+        </div>
+
+        <!-- פאנל ניהול מרצים -->
+        <div id="adminPanel" style="display: none;">
+            <div class="info-banner">
+                <strong>כלל ההרשאות במערכת:</strong> כל משתמש שכתובת המייל שלו מופיעה ברשימה למטה יזוהה אוטומטית כ<strong>מרצה</strong> ברגע שיתחבר (דרך Google או דמו). כל משתמש אחר שאינו ברשימה יזוהה אוטומטית כ<strong>תלמיד</strong>.
+            </div>
+
+            <div class="card">
+                <h3 style="margin-top: 0;">📤 העלאת קובץ Excel של רשימת המרצים בלבד</h3>
+                <p style="color: #555; font-size: 14px;">העלה קובץ <code>.xlsx</code> המכיל עמודת כתובת אימייל (ועמודת שם מלא/פרטי אופציונלית). העלאת קובץ חדש תחליף את רשימת המרצים הקודמת ותעדכן את ההרשאות.</p>
+                <input type="file" id="lecturersExcelInput" accept=".xlsx,.xlsm" style="display: none;" onchange="uploadLecturersExcel(this)">
+                <button class="btn btn-success" onclick="document.getElementById('lecturersExcelInput').click()">בחר והעלה קובץ Excel של מרצים 📄</button>
+                <div id="excelMsg" style="margin-top: 14px; display: none;"></div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-top: 0;">➕ הוספת מרצה בודד ידנית</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <input type="email" id="newLecEmail" placeholder="כתובת אימייל של המרצה (למשל lecturer@ariel.ac.il)" style="flex: 2; margin: 0;">
+                    <input type="text" id="newLecName" placeholder="שם מלא של המרצה" style="flex: 1; margin: 0;">
+                    <button class="btn" onclick="addSingleLecturer()">הוסף מרצה</button>
+                </div>
+
+                <h3 style="margin-top: 30px;">📋 רשימת המרצים המאושרים במערכת</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>כתובת אימייל</th>
+                            <th>שם המרצה</th>
+                            <th>תאריך הוספה</th>
+                            <th>פעולה</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lecturersTableBody">
+                        <tr><td colspan="4" style="text-align: center;">טוען רשימת מרצים...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let adminToken = sessionStorage.getItem('admin_token') || '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (adminToken) {
+                showAdminPanel();
+            }
+        });
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        async function submitAdminLogin() {
+            const username = document.getElementById('adminUser').value.trim();
+            const password = document.getElementById('adminPass').value.trim();
+            const errEl = document.getElementById('adminLoginErr');
+            errEl.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'שגיאה בהתחברות');
+
+                adminToken = data.token;
+                sessionStorage.setItem('admin_token', adminToken);
+                showAdminPanel();
+            } catch (err) {
+                errEl.innerText = err.message;
+                errEl.style.display = 'block';
+            }
+        }
+
+        function adminLogout() {
+            sessionStorage.removeItem('admin_token');
+            adminToken = '';
+            document.getElementById('adminPanel').style.display = 'none';
+            document.getElementById('logoutAdminBtn').style.display = 'none';
+            document.getElementById('adminLoginCard').style.display = 'block';
+        }
+
+        function showAdminPanel() {
+            document.getElementById('adminLoginCard').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+            document.getElementById('logoutAdminBtn').style.display = 'inline-block';
+            loadLecturers();
+        }
+
+        async function loadLecturers() {
+            const tbody = document.getElementById('lecturersTableBody');
+            const res = await fetch('/api/admin/lecturers', {
+                headers: { 'X-Admin-Token': adminToken }
+            });
+            if (res.status === 401) return adminLogout();
+
+            const data = await res.json();
+            tbody.innerHTML = '';
+
+            if (!data.lecturers || data.lecturers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #777;">עדיין לא הוגדרו מרצים. כל משתמש שיתחבר כרגע יוגדר כתלמיד.</td></tr>';
+                return;
+            }
+
+            data.lecturers.forEach(lec => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${escapeHtml(lec.email)}</strong></td>
+                        <td>${escapeHtml(lec.full_name)}</td>
+                        <td>${escapeHtml(lec.added_at)}</td>
+                        <td><button class="btn btn-danger" onclick="deleteLecturer('${escapeHtml(lec.email)}')">הסר מרצה</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function uploadLecturersExcel(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const msgBox = document.getElementById('excelMsg');
+            msgBox.style.display = 'block';
+            msgBox.innerHTML = '<div style="background: #e3f2fd; padding: 10px; border-radius: 6px;">⏳ טוען ומעדכן את רשימת המרצים...</div>';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/api/admin/lecturers/upload-excel', {
+                    method: 'POST',
+                    headers: { 'X-Admin-Token': adminToken },
+                    body: formData
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'שגיאה בהעלאת הקובץ');
+
+                msgBox.innerHTML = `<div style="background: #d4edda; color: #155724; padding: 12px; border-radius: 6px;">✅ רשימת המרצים עודכנה בהצלחה! נטענו <strong>${data.imported_count}</strong> מרצים.</div>`;
+                loadLecturers();
+            } catch (err) {
+                msgBox.innerHTML = `<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px;">❌ ${escapeHtml(err.message)}</div>`;
+            } finally {
+                input.value = '';
+            }
+        }
+
+        async function addSingleLecturer() {
+            const email = document.getElementById('newLecEmail').value.trim();
+            const fullName = document.getElementById('newLecName').value.trim();
+            if (!email) return alert('נא להזין כתובת אימייל');
+
+            const res = await fetch('/api/admin/lecturers/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Admin-Token': adminToken
+                },
+                body: JSON.stringify({ email: email, full_name: fullName })
+            });
+            const data = await res.json();
+            if (!res.ok) return alert(data.detail || 'שגיאה בהוספה');
+
+            document.getElementById('newLecEmail').value = '';
+            document.getElementById('newLecName').value = '';
+            loadLecturers();
+        }
+
+        async function deleteLecturer(email) {
+            await fetch(`/api/admin/lecturers/${encodeURIComponent(email)}`, {
+                method: 'DELETE',
+                headers: { 'X-Admin-Token': adminToken }
+            });
+            loadLecturers();
+        }
+    </script>
+</body>
+</html>

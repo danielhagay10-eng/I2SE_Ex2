@@ -12,6 +12,7 @@
         .btn:hover { background: #0056b3; }
         .btn-danger { background: #dc3545; }
         .btn-success { background: #28a745; }
+        .btn-secondary { background: #6c757d; }
         
         #verificationSection { display: none; margin-top: 20px; padding: 15px; border: 2px dashed #ccc; border-radius: 10px; background: #fafafa; }
         #liveControlPanel { display: none; margin-top: 20px; padding: 20px; border: 2px solid #007bff; border-radius: 10px; background: #f8f9fa; }
@@ -19,6 +20,12 @@
         video { width: 100%; max-width: 400px; border-radius: 5px; border: 1px solid #ccc; }
         canvas { display: none; }
         #previewImage { width: 100%; max-width: 400px; border-radius: 5px; display: none; margin: 10px auto; }
+
+        /* תיבת סטטוס והתראת אימות נוכחות */
+        .attendance-alert { padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 16px; font-weight: bold; border: 1px solid transparent; }
+        .alert-ok { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .alert-warning { background-color: #fff3cd; color: #856404; border-color: #ffeeba; }
+        .alert-danger { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
         
         /* אזור ההתראות המרחפות בדפדפן */
         .toast-container { position: fixed; bottom: 20px; left: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
@@ -69,12 +76,17 @@
             <button class="btn btn-success" id="analyzeBtn" style="display: none; margin-top: 15px; width: 100%;">אשר ספירה ושחרר כפתורים לתלמידים</button>
         </div>
 
-        <!-- לוח בקרה לשיעור פעיל (מופיע במקום התמונה אחרי הספירה) -->
+        <!-- לוח בקרה לשיעור פעיל -->
         <div id="liveControlPanel">
             <h3 style="color: #004085; margin-top: 0;">🎛️ לוח בקרה לשיעור פעיל</h3>
-            <h4 id="liveAttendanceSummary" style="margin-bottom: 20px;"></h4>
+            
+            <!-- התראת אימות נוכחות דינמית -->
+            <div id="attendanceAlertBox" class="attendance-alert alert-ok"></div>
+            <button class="btn btn-secondary" id="recountBtn" style="font-size: 14px; padding: 8px 15px; margin-bottom: 15px;">
+                📸 צלם / העלה תמונה לספירה חוזרת
+            </button>
 
-            <div style="margin: 20px 0; padding: 15px; background: white; border-radius: 8px; border: 1px solid #ddd;">
+            <div style="margin: 10px 0 20px 0; padding: 15px; background: white; border-radius: 8px; border: 1px solid #ddd;">
                 <p id="buttonsStatusText" style="font-weight: bold; color: #28a745; font-size: 18px; margin-top: 0;">
                     🔔 כפתורי התלמידים פעילים כעת
                 </p>
@@ -83,7 +95,7 @@
                 </button>
             </div>
 
-            <button class="btn btn-danger" id="endSessionBtn" style="margin-top: 15px; width: 100%;">🛑 סיים שיעור</button>
+            <button class="btn btn-danger" id="endSessionBtn" style="margin-top: 10px; width: 100%;">🛑 סיים שיעור</button>
         </div>
     </div>
 
@@ -99,7 +111,6 @@
     </div>
 
     <script>
-        // שליפת פרטי המרצה והקורס מההתחברות (עם ברירת מחדל אם עדיין לא נשמרו ב-localStorage)
         const lecturerName = localStorage.getItem('user_name') || localStorage.getItem('lecturer_name') || 'מרצה';
         const lecturerEmail = localStorage.getItem('user_email') || localStorage.getItem('lecturer_email') || 'lecturer@ariel.ac.il';
         const currentCourseName = localStorage.getItem('course_name') || 'מבוא לחישוב';
@@ -207,7 +218,7 @@
         });
 
         analyzeBtn.addEventListener('click', async () => {
-            analyzeBtn.innerText = "מנתח תמונה וסופר פרצופים...";
+            analyzeBtn.innerText = "מנתח תמונה וסופר תלמידים...";
             analyzeBtn.disabled = true;
 
             try {
@@ -230,18 +241,42 @@
                 verificationSection.style.display = "none";
                 liveControlPanel.style.display = "block";
 
-                const summaryEl = document.getElementById('liveAttendanceSummary');
-                summaryEl.innerText = `✅ זוהו ${data.face_count} פרצופים בתמונה לעומת ${data.scanned_count} סריקות QR.`;
-                summaryEl.style.color = data.scanned_count > data.face_count ? "#dc3545" : "#28a745";
+                // הצגת תיבת התראה מותאמת לפי attendance_status מהשרת
+                const alertBox = document.getElementById('attendanceAlertBox');
+                alertBox.className = "attendance-alert";
+
+                if (data.attendance_status === "too_many_scans") {
+                    alertBox.classList.add("alert-danger");
+                    alertBox.innerHTML = `⚠️ התראת חריגה: נסרקו ${data.scanned_count} קודי QR, אך זוהו רק ${data.face_count} אנשים בכיתה (פער של ${data.diff}). ייתכן שבוצעה סריקה מרחוק!`;
+                    sendDesktopNotification("⚠️ חשד לסריקת נוכחות מרחוק", `נסרקו ${data.scanned_count} לעומת ${data.face_count} בכיתה`);
+                } else if (data.attendance_status === "fewer_scans") {
+                    alertBox.classList.add("alert-warning");
+                    alertBox.innerHTML = `ℹ️ שים לב: זוהו ${data.face_count} אנשים בכיתה, אך רק ${data.scanned_count} סרקו QR (חסרות ${Math.abs(data.diff)} סריקות).`;
+                } else {
+                    alertBox.classList.add("alert-ok");
+                    alertBox.innerHTML = `✅ הנוכחות תואמת: זוהו ${data.face_count} אנשים בכיתה לעומת ${data.scanned_count} סריקות QR.`;
+                }
 
                 await updateSessionStatus('active_participation');
-                liveUpdatesInterval = setInterval(fetchLiveUpdates, 3000);
+                if (!liveUpdatesInterval) {
+                    liveUpdatesInterval = setInterval(fetchLiveUpdates, 3000);
+                }
             } catch (err) {
                 console.error(err);
                 alert("שגיאה בניתוח התמונה: " + err.message);
+            } finally {
                 analyzeBtn.innerText = "אשר ספירה ושחרר כפתורים לתלמידים";
                 analyzeBtn.disabled = false;
             }
+        });
+
+        // כפתור לספירה חוזרת במידה והמרצה רוצה לצלם זווית טובה יותר
+        document.getElementById('recountBtn').addEventListener('click', () => {
+            liveControlPanel.style.display = "none";
+            verificationSection.style.display = "block";
+            previewImage.style.display = "none";
+            analyzeBtn.style.display = "none";
+            fileInput.value = "";
         });
 
         // כפתור השתקה / הפעלה של כפתורי התלמידים
@@ -267,7 +302,8 @@
             }
         });
 
-       document.getElementById('endSessionBtn').addEventListener('click', async () => {
+        // סיום שיעור וחזרה לדשבורד הקורס
+        document.getElementById('endSessionBtn').addEventListener('click', async () => {
             await updateSessionStatus('ended');
             if (liveUpdatesInterval) clearInterval(liveUpdatesInterval);
             window.location.href = '/course_dashboard.html';

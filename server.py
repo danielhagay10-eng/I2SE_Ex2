@@ -1,46 +1,12 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import sqlite3
-from fastapi import FastAPI, Request
-from fastapi.templating import Jinja2Templates
-app = FastAPI()
-templates = Jinja2Templates(directory="templates")
-@app.get("/")
-async def serve_login_page(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+from pydantic import BaseModel
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], 
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 def get_db_connection():
     conn = sqlite3.connect("attendance.db")
     conn.row_factory = sqlite3.Row
     return conn
 
-# --- פונקציה חדשה: בניית מסד הנתונים אם הוא חסר ---
-def init_db():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('''CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, first_name TEXT, last_name TEXT, role TEXT)''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS courses (id INTEGER PRIMARY KEY AUTOINCREMENT, course_name TEXT, lecturer_id TEXT)''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, course_id INTEGER, token TEXT, status TEXT)''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS attendance (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, student_id TEXT)''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS participation (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, student_id TEXT, action_type TEXT, points INTEGER)''')
-    # מוסיף את המרצה הראשון למערכת כדי שנוכל להתחבר
-    cursor.execute("INSERT OR IGNORE INTO users (id, first_name, last_name, role) VALUES ('kfir@ariel.ac.il', 'כפיר', 'מרצה', 'lecturer')")
-    conn.commit()
-    conn.close()
-
-# הפעלת יצירת הטבלאות מיד כשהשרת עולה
-init_db()
-# ----------------------------------------------------
 
 class AttendanceMark(BaseModel):
     session_id: str
@@ -48,25 +14,94 @@ class AttendanceMark(BaseModel):
     first_name: str
     last_name: str
 
+
 class LoginRequest(BaseModel):
     id: str
 
-@app.post("/login")
-async def login(data: LoginRequest):
+
+def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    cursor.execute("SELECT role, first_name, last_name FROM users WHERE id = ?", (data.id,))
-    user = cursor.fetchone()
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        first_name TEXT,
+        last_name TEXT,
+        role TEXT
+    )''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS approved_lecturers (
+        email TEXT PRIMARY KEY,
+        full_name TEXT,
+        added_at TEXT
+    )''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS courses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        course_name TEXT,
+        lecturer_id TEXT,
+        created_at TEXT
+    )''')
+    try:
+        cursor.execute("ALTER TABLE courses ADD COLUMN created_at TEXT DEFAULT ''")
+    except Exception:
+        pass
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        course_id INTEGER,
+        token TEXT,
+        status TEXT
+    )''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT,
+        student_id TEXT
+    )''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS participation (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT,
+        student_id TEXT,
+        action_type TEXT,
+        points INTEGER
+    )''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS course_students (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        course_name TEXT NOT NULL,
+        student_email TEXT NOT NULL,
+        full_name TEXT NOT NULL,
+        id_number TEXT DEFAULT '',
+        UNIQUE(course_name, student_email)
+    )''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS course_staff (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        course_name TEXT NOT NULL,
+        staff_email TEXT NOT NULL,
+        full_name TEXT NOT NULL,
+        role_title TEXT DEFAULT 'מתרגל',
+        UNIQUE(course_name, staff_email)
+    )''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS lessons (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        course_name TEXT,
+        title TEXT,
+        date_str TEXT,
+        materials_json TEXT,
+        ai_summary TEXT
+    )''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS surveys (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        course_name TEXT,
+        questions_json TEXT,
+        status TEXT,
+        end_timestamp REAL,
+        created_at TEXT
+    )''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS survey_votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        survey_id INTEGER,
+        student_id TEXT,
+        answers_json TEXT,
+        UNIQUE(survey_id, student_id)
+    )''')
+
+    conn.commit()
     conn.close()
-
-    if user:
-        return {"status": "success", "role": user["role"], "name": f"{user['first_name']} {user['last_name']}"}
-    else:
-        raise HTTPException(status_code=401, detail="תעודת זהות לא נמצאה במערכת")
-
-from lecturer import lecturer_router
-from student import student_router
-
-app.include_router(lecturer_router)
-app.include_router(student_router)

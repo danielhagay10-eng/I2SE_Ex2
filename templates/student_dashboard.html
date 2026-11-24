@@ -3,170 +3,415 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>דשבורד סטודנט</title>
+    <title>דשבורד סטודנט - הקורסים שלי</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
         .navbar { background-color: #17a2b8; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
         
-        .btn { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .btn { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; transition: 0.2s; text-decoration: none; display: inline-block; }
         .btn:hover { background: #0056b3; }
         .btn-success { background: #28a745; }
+        .btn-back { background: rgba(255,255,255,0.2); border: 1px solid white; color: white; font-weight: bold; }
         .btn-ai { background: linear-gradient(45deg, #6f42c1, #007bff); font-weight: bold; }
         .btn-ai:hover { background: linear-gradient(45deg, #59339d, #0056b3); }
         
-        /* אזור QR */
-        .qr-section { background: white; padding: 30px; border-radius: 12px; text-align: center; border: 2px dashed #17a2b8; margin-bottom: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .qr-btn { background: #17a2b8; font-size: 20px; padding: 15px 30px; border-radius: 50px; }
+        .qr-section { background: white; padding: 25px; border-radius: 12px; text-align: center; border: 2px dashed #17a2b8; margin-bottom: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         
-        /* חומרי לימוד */
+        .courses-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; margin-top: 20px; }
+        .course-card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 3px 10px rgba(0,0,0,0.06); border-top: 5px solid #17a2b8; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .course-card:hover { transform: translateY(-4px); box-shadow: 0 8px 18px rgba(0,0,0,0.12); }
+
         .lesson-card { background: white; border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-right: 5px solid #007bff; }
-        .lesson-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px; }
-        .lesson-title { font-size: 22px; font-weight: bold; color: #333; margin: 0; }
+        .lesson-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 15px; }
+        .lesson-title { font-size: 21px; font-weight: bold; color: #333; margin: 0; }
         .lesson-date { color: #777; font-size: 14px; }
         .materials-list { margin-bottom: 20px; }
-        .material-item { display: inline-block; background: #e9ecef; padding: 8px 15px; border-radius: 20px; margin-left: 10px; font-size: 14px; text-decoration: none; color: #333; }
+        .material-item { display: inline-block; background: #e9ecef; padding: 8px 15px; border-radius: 20px; margin-left: 10px; margin-bottom: 6px; font-size: 14px; text-decoration: none; color: #004085; font-weight: 500; border: 1px solid #ced4da; }
         .material-item:hover { background: #dee2e6; }
         
-        .lesson-actions { display: flex; gap: 15px; }
+        .lesson-actions { display: flex; gap: 15px; flex-wrap: wrap; }
+        .ai-summary-box { display: none; background: #f8f9fa; border: 1px solid #d1d7dc; border-right: 4px solid #6f42c1; padding: 20px; border-radius: 8px; margin-top: 15px; line-height: 1.7; color: #222; }
         
-        /* חלון AI סודי (מוסתר כברירת מחדל) */
-        .ai-summary-box { display: none; background: #f8f9fa; border: 1px solid #d1d7dc; border-left: 4px solid #6f42c1; padding: 20px; border-radius: 8px; margin-top: 15px; line-height: 1.6; }
-        
-        /* סקרים */
         .survey-card { background: #fff3cd; border-right: 5px solid #ffc107; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .survey-title { margin-top: 0; color: #856404; font-size: 20px; }
-        .survey-option { margin-bottom: 10px; font-size: 16px; }
+        .survey-title { margin-top: 0; color: #856404; font-size: 19px; }
+        .survey-option { margin-bottom: 8px; font-size: 16px; }
 
-        /* מודל אימייל למרצה (מוסתר כברירת מחדל) */
-        .email-modal { display: none; background: white; border: 1px solid #ccc; padding: 20px; border-radius: 10px; margin-top: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .email-input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; box-sizing: border-box; }
-        .email-textarea { width: 100%; padding: 10px; height: 100px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; resize: vertical; box-sizing: border-box; margin-bottom: 15px; }
+        .email-modal { display: none; background: #f9fbfd; border: 1px solid #cbd5e1; padding: 20px; border-radius: 10px; margin-top: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        .email-input, .email-select { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; box-sizing: border-box; background: white; }
+        .email-textarea { width: 100%; padding: 10px; height: 95px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; resize: vertical; box-sizing: border-box; margin-bottom: 12px; }
     </style>
 </head>
 <body>
 
     <div class="navbar">
-        <h1 style="margin: 0; font-size: 22px;">קורס: מבוא לחישוב</h1>
-        <div>שלום, תלמיד | <a href="/" style="color: #fff; text-decoration: underline;">חזור לקורסים</a></div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <button class="btn btn-back" id="backToCoursesBtn" style="display: none;" onclick="showCoursesHome()">→ הקורסים שלי</button>
+            <h1 id="studentHeaderTitle" style="margin: 0; font-size: 22px;">🎓 הקורסים שלי</h1>
+        </div>
+        <div><span id="studentNavGreeting">שלום, סטודנט</span> | <a href="/" style="color: #fff; text-decoration: underline;">יציאה</a></div>
     </div>
 
     <div class="container">
-        
-        <!-- אזור כניסה לשיעור חי -->
+        <!-- כניסה לשיעור חי -->
         <div class="qr-section">
             <h2 style="margin-top: 0; color: #17a2b8;">נוכח בכיתה?</h2>
-            <p>המרצה פתח שיעור חי. סרוק את הקוד המוקרן על הלוח כדי להירשם כנוכח.</p>
-           <button class="btn" onclick="window.location.href='/student.html'">📷 סרוק QR וכנס לשיעור</button>
+            <p>סרוק את קוד ה-QR מהלוח כדי להירשם כנוכח ולהשתתף בשיעור (מותנה ברישום לקורס).</p>
+            <button class="btn" style="font-size: 18px; padding: 12px 25px;" onclick="window.location.href='/student.html'">📷 סרוק QR וכנס לשיעור</button>
         </div>
 
-        <!-- אזור סקרים זמינים (מופיע רק כשהמרצה משגר סקר) -->
-        <div id="active-surveys">
-            <h3 style="color: #555;">📋 סקרים פעילים</h3>
-            <div class="survey-card" id="survey-1">
-                <h4 class="survey-title">שאלת המרצה: האם קצב השיעור הנוכחי ברור?</h4>
-                <div class="survey-option"><label><input type="radio" name="q1"> כן, הכל מובן</label></div>
-                <div class="survey-option"><label><input type="radio" name="q1"> קצת מהר מדי, אשמח לחזרה קצרה</label></div>
-                <button class="btn" style="background: #ffc107; color: black; font-weight: bold; margin-top: 10px;" onclick="submitSurvey('survey-1')">שלח תשובה למרצה</button>
+        <!-- מסך 1: רשימת הקורסים שאליהם הסטודנט רשום -->
+        <div id="myCoursesSection">
+            <h3 style="color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px;">📚 הקורסים שאני רשום אליהם</h3>
+            <div id="studentCoursesGrid" class="courses-grid">
+                <p style="color: #777;">טוען את הקורסים שלך...</p>
             </div>
         </div>
 
-        <h3 style="color: #555; margin-top: 40px; border-bottom: 2px solid #ddd; padding-bottom: 10px;">📚 שיעורים מוקלטים וחומרים</h3>
-
-        <!-- בלוק שיעור מוקלט 1 -->
-        <div class="lesson-card">
-            <div class="lesson-header">
-                <div>
-                    <h3 class="lesson-title">מערכים ולולאות</h3>
-                    <span class="lesson-date">תאריך: 10/11/2026</span>
-                </div>
-            </div>
-            
-            <div class="materials-list">
-                <strong>קובצי השיעור:</strong>
-                <a href="#" class="material-item">🎥 הקלטת_שיעור_מלא.mp4</a>
-                <a href="#" class="material-item">📄 מצגת_לולאות.pdf</a>
-            </div>
-            
-            <div class="lesson-actions">
-                <button class="btn btn-ai" onclick="generateAISummary('ai-box-1')">✨ סכם לי את השיעור (AI)</button>
-                <button class="btn" onclick="openEmailForm('email-form-1', 'מערכים ולולאות')">✉️ שלח שאלה למרצה</button>
+        <!-- מסך 2: תוך קורס ספציפי -->
+        <div id="singleCourseSection" style="display: none;">
+            <div id="active-surveys-section" style="display: none;">
+                <h3 style="color: #856404;">📋 סקר פעיל מהמרצה (<span id="studentSurveyTimer"></span>)</h3>
+                <div class="survey-card" id="active-survey-card"></div>
             </div>
 
-            <!-- אזור סיכום AI (נפתח בלחיצה) -->
-            <div class="ai-summary-box" id="ai-box-1">
-                <strong>🤖 סיכום חכם של השיעור:</strong><br>
-                בשיעור זה למדנו על ההבדלים בין לולאות `for` ללולאות `while`. המרצה הסביר כיצד לרוץ על מערך נתונים ולשלוף ערכים ספציפיים. נקודה חשובה מההקלטה (דקה 14:20): תמיד לבדוק חריגה מגבולות המערך כדי למנוע שגיאות זמן ריצה.
-            </div>
-
-            <!-- טופס אימייל למרצה (נפתח בלחיצה) -->
-            <div class="email-modal" id="email-form-1">
-                <h4 style="margin-top: 0; color: #333;">שליחת מייל למרצה</h4>
-                <label style="font-size: 14px; color: #555;">נושא (ניתן לעריכה):</label>
-                <input type="text" class="email-input" id="email-subject-1">
-                
-                <label style="font-size: 14px; color: #555;">השאלה שלך:</label>
-                <textarea class="email-textarea" placeholder="הקלד את שאלתך כאן..."></textarea>
-                
-                <div style="text-align: left;">
-                    <button class="btn" style="background: #6c757d;" onclick="document.getElementById('email-form-1').style.display='none'">ביטול</button>
-                    <button class="btn btn-success" onclick="sendEmail('email-form-1')">שלח למייל של המרצה 🚀</button>
-                </div>
+            <h3 style="color: #555; margin-top: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px;">📖 שיעורים, סרטונים וחומרי לימוד</h3>
+            <div id="student-lessons-container">
+                <p style="color: #777;">טוען שיעורים...</p>
             </div>
         </div>
-
     </div>
 
     <script>
-        // פונקציית סריקת נוכחות
-        function scanQR() {
-            alert("המצלמה נפתחת... \n(ברגע שתסרוק את הברקוד של המרצה, הנוכחות שלך תירשם במסד הנתונים!)");
+        const studentName = localStorage.getItem('user_name') || localStorage.getItem('student_name') || 'סטודנט';
+        const studentEmail = localStorage.getItem('user_email') || localStorage.getItem('student_email') || '';
+
+        let selectedCourseName = '';
+        let courseStaffList = [];
+        let votedSurveyIds = new Set();
+        let surveyPollTimer = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!studentEmail) {
+                window.location.href = '/';
+                return;
+            }
+            document.getElementById('studentNavGreeting').innerText = `שלום, ${studentName}`;
+            loadEnrolledCourses();
+        });
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
         }
 
-        // פונקציית הגשת סקר
-        function submitSurvey(surveyId) {
-            const survey = document.getElementById(surveyId);
-            survey.innerHTML = '<h3 style="color: #28a745; text-align: center; margin: 0;">✅ תשובתך נקלטה והועברה למרצה בהצלחה!</h3>';
-            setTimeout(() => { survey.style.display = 'none'; }, 3000);
+        function getFileIcon(name) {
+            const lower = name.toLowerCase();
+            if (lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.mov')) return '🎥';
+            if (lower.endsWith('.pdf')) return '📕';
+            if (lower.endsWith('.ppt') || lower.endsWith('.pptx')) return '🪧';
+            return '📄';
         }
 
-        // פונקציית AI לסיכום השיעור
-        function generateAISummary(boxId) {
-            const box = document.getElementById(boxId);
+        // --- 1. טעינת רשימת הקורסים של הסטודנט בלבד ---
+        async function loadEnrolledCourses() {
+            const grid = document.getElementById('studentCoursesGrid');
+            try {
+                const res = await fetch(`/api/student/courses?student_email=${encodeURIComponent(studentEmail)}`);
+                const data = await res.json();
+                const courses = data.courses || [];
+                grid.innerHTML = '';
+
+                if (courses.length === 0) {
+                    grid.innerHTML = `
+                        <div style="grid-column: 1 / -1; background: white; padding: 30px; border-radius: 10px; text-align: center; color: #555;">
+                            עדיין לא שויכת לאף קורס במערכת.<br>
+                            כאשר מרצה יוסיף את כתובת המייל שלך (<strong>${escapeHtml(studentEmail)}</strong>) לרשימת הקורס, הקורס יופיע כאן אוטומטית.
+                        </div>`;
+                    return;
+                }
+
+                courses.forEach(c => {
+                    const card = document.createElement('div');
+                    card.className = 'course-card';
+                    card.onclick = () => enterCourse(c.course_name);
+                    card.innerHTML = `
+                        <h3 style="margin: 0 0 10px 0; color: #004085; font-size: 21px;">${escapeHtml(c.course_name)}</h3>
+                        <div style="color: #555; font-size: 14px; line-height: 1.6;">
+                            מרצה: <strong>${escapeHtml(c.lecturer_name)}</strong><br>
+                            נפתח ב: <strong>${escapeHtml(c.created_at || 'לא צוין')}</strong>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (e) {
+                grid.innerHTML = '<p style="color: #dc3545;">שגיאה בטעינת רשימת הקורסים.</p>';
+            }
+        }
+
+        function showCoursesHome() {
+            selectedCourseName = '';
+            clearInterval(surveyPollTimer);
+            document.getElementById('singleCourseSection').style.display = 'none';
+            document.getElementById('myCoursesSection').style.display = 'block';
+            document.getElementById('backToCoursesBtn').style.display = 'none';
+            document.getElementById('studentHeaderTitle').innerText = '🎓 הקורסים שלי';
+            loadEnrolledCourses();
+        }
+
+        async function enterCourse(courseName) {
+            selectedCourseName = courseName;
+            localStorage.setItem('course_name', courseName);
+
+            document.getElementById('myCoursesSection').style.display = 'none';
+            document.getElementById('singleCourseSection').style.display = 'block';
+            document.getElementById('backToCoursesBtn').style.display = 'inline-block';
+            document.getElementById('studentHeaderTitle').innerText = `קורס: ${courseName}`;
+
+            await loadCourseStaff(courseName);
+            await loadStudentLessons(courseName);
+
+            clearInterval(surveyPollTimer);
+            pollActiveSurvey();
+            surveyPollTimer = setInterval(pollActiveSurvey, 3000);
+        }
+
+        async function loadCourseStaff(courseName) {
+            try {
+                const res = await fetch(`/api/course/staff?course_name=${encodeURIComponent(courseName)}`);
+                const data = await res.json();
+                courseStaffList = data.staff || [];
+            } catch (e) {
+                courseStaffList = [];
+            }
+        }
+
+        // --- 2. בדיקת סקרים פעילים בקורס הנבחר ---
+        async function pollActiveSurvey() {
+            if (!selectedCourseName) return;
+            try {
+                const res = await fetch(`/api/surveys/active?course_name=${encodeURIComponent(selectedCourseName)}`);
+                const data = await res.json();
+                const section = document.getElementById('active-surveys-section');
+
+                if (!data.active || votedSurveyIds.has(data.survey_id)) {
+                    section.style.display = 'none';
+                    return;
+                }
+
+                section.style.display = 'block';
+                const m = Math.floor(data.seconds_left / 60).toString().padStart(2, '0');
+                const s = (data.seconds_left % 60).toString().padStart(2, '0');
+                document.getElementById('studentSurveyTimer').innerText = `נותרו ${m}:${s}`;
+
+                const card = document.getElementById('active-survey-card');
+                if (card.dataset.surveyId != data.survey_id) {
+                    card.dataset.surveyId = data.survey_id;
+                    let html = '';
+                    data.questions.forEach((q, qIdx) => {
+                        html += `<div style="margin-bottom: 15px;"><h4 class="survey-title">${escapeHtml(q.question)}</h4>`;
+                        q.options.forEach(opt => {
+                            html += `<div class="survey-option"><label><input type="radio" name="sq_${qIdx}" value="${escapeHtml(opt)}"> ${escapeHtml(opt)}</label></div>`;
+                        });
+                        html += `</div>`;
+                    });
+                    html += `<button class="btn" style="background: #ffc107; color: black; font-weight: bold;" onclick="submitSurveyVote(${data.survey_id}, ${data.questions.length})">שלח תשובה למרצה 🚀</button>`;
+                    card.innerHTML = html;
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function submitSurveyVote(surveyId, numQuestions) {
+            const answers = {};
+            for (let i = 0; i < numQuestions; i++) {
+                const selected = document.querySelector(`input[name="sq_${i}"]:checked`);
+                if (!selected) return alert("נא לענות על כל השאלות בסקר לפני השליחה.");
+                answers[i.toString()] = selected.value;
+            }
+
+            const res = await fetch('/api/surveys/vote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    survey_id: surveyId,
+                    student_id: studentEmail,
+                    answers: answers
+                })
+            });
+
+            if (res.ok || res.status === 400) {
+                votedSurveyIds.add(surveyId);
+                const card = document.getElementById('active-survey-card');
+                card.innerHTML = '<h3 style="color: #28a745; text-align: center; margin: 0;">✅ תשובתך נקלטה והועברה למרצה בהצלחה!</h3>';
+                setTimeout(() => {
+                    document.getElementById('active-surveys-section').style.display = 'none';
+                }, 2500);
+            }
+        }
+
+        // --- 3. טעינת שיעורים וקבצים של הקורס ---
+        async function loadStudentLessons(courseName) {
+            const container = document.getElementById('student-lessons-container');
+            try {
+                const res = await fetch(`/api/lessons?course_name=${encodeURIComponent(courseName)}`);
+                const data = await res.json();
+                container.innerHTML = '';
+
+                if (!data.lessons || data.lessons.length === 0) {
+                    container.innerHTML = '<p style="color: #777;">המרצה עדיין לא העלה שיעורים או חומרי לימוד בקורס זה.</p>';
+                    return;
+                }
+
+                const staffOptionsHtml = courseStaffList.length > 0
+                    ? courseStaffList.map(s => `<option value="${escapeHtml(s.email)}">${escapeHtml(s.name)} (${escapeHtml(s.role_title)}) - ${escapeHtml(s.email)}</option>`).join('')
+                    : '<option value="">מרצה הקורס</option>';
+
+                data.lessons.forEach(lesson => {
+                    const filesHtml = lesson.materials.map(m => {
+                        const icon = getFileIcon(m.name);
+                        return m.url
+                            ? `<a href="${m.url}" target="_blank" download="${escapeHtml(m.name)}" class="material-item">${icon} ${escapeHtml(m.name)}</a>`
+                            : `<span class="material-item">${icon} ${escapeHtml(m.name)}</span>`;
+                    }).join('');
+
+                    container.innerHTML += `
+                        <div class="lesson-card">
+                            <div class="lesson-header">
+                                <div>
+                                    <h3 class="lesson-title">${escapeHtml(lesson.title)}</h3>
+                                    <span class="lesson-date">תאריך: ${escapeHtml(lesson.date_str)}</span>
+                                </div>
+                            </div>
+                            <div class="materials-list">
+                                <strong>קובצי השיעור:</strong><br><div style="margin-top: 8px;">${filesHtml || '<span style="color:#777;">אין קבצים מצורפים</span>'}</div>
+                            </div>
+                            <div class="lesson-actions">
+                                <button class="btn btn-ai" id="ai_btn_${lesson.id}" onclick="summarizeLesson(${lesson.id})">✨ סכם לי את השיעור (AI)</button>
+                                <button class="btn" onclick="openEmailForm('email_${lesson.id}')">✉️ שלח שאלה למרצה / מתרגל</button>
+                            </div>
+
+                            <div class="ai-summary-box" id="ai_box_${lesson.id}"></div>
+
+                            <div class="email-modal" id="email_${lesson.id}">
+                                <h4 style="margin-top: 0;">שליחת שאלה לסגל הקורס</h4>
+                                <label style="font-size: 13px; color: #555;">למי לשלוח (מרצה או מתרגל):</label>
+                                <select class="email-select" id="email_recipient_${lesson.id}">
+                                    ${staffOptionsHtml}
+                                </select>
+                                <label style="font-size: 13px; color: #555;">נושא הפנייה:</label>
+                                <input type="text" class="email-input" id="email_subj_${lesson.id}" value="שאלה לגבי שיעור: ${escapeHtml(lesson.title)}">
+                                <label style="font-size: 13px; color: #555;">תוכן השאלה:</label>
+                                <textarea class="email-textarea" id="email_body_${lesson.id}" placeholder="הקלד את שאלתך כאן..."></textarea>
+                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                                    <div id="email_status_${lesson.id}" style="font-size: 14px;"></div>
+                                    <div>
+                                        <button class="btn" style="background: #6c757d;" onclick="document.getElementById('email_${lesson.id}').style.display='none'">ביטול</button>
+                                        <button class="btn btn-success" id="email_send_btn_${lesson.id}" onclick="sendQuestionToLecturer(${lesson.id})">שלח שאלה 🚀</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function formatMarkdown(text) {
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>');
+        }
+
+        async function summarizeLesson(lessonId) {
+            const box = document.getElementById(`ai_box_${lessonId}`);
+            const btn = document.getElementById(`ai_btn_${lessonId}`);
+
             if (box.style.display === 'block') {
                 box.style.display = 'none';
-            } else {
-                box.innerHTML = '<em>מנתח את קובץ הוידאו והמצגת בעזרת מודל AI... ממתין לתשובה ⏳</em>';
+                return;
+            }
+            if (box.dataset.loaded === 'true') {
                 box.style.display = 'block';
-                
-                // מדמה המתנה של שנייה לתשובת שרת ה-AI
-                setTimeout(() => {
-                    box.innerHTML = `
-                        <strong>🤖 סיכום חכם של השיעור:</strong><br>
-                        בשיעור זה למדנו על ההבדלים בין לולאות <code>for</code> ללולאות <code>while</code>. המרצה הסביר כיצד לרוץ על מערך נתונים ולשלוף ערכים ספציפיים. <br><br>
-                        💡 <strong>טיפ מההקלטה (דקה 14:20):</strong> תמיד לבדוק חריגה מגבולות המערך כדי למנוע שגיאות.
-                    `;
-                }, 1500);
+                return;
+            }
+
+            box.style.display = 'block';
+            box.innerHTML = '<em>⏳ מנתח את חומרי השיעור והסרטון בעזרת Gemini AI...</em>';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`/api/lessons/${lessonId}/summarize`, { method: 'POST' });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.detail || 'שגיאה בקבלת הסיכום');
+                }
+
+                box.dataset.loaded = 'true';
+                box.innerHTML = `
+                    <div style="font-weight: bold; color: #6f42c1; margin-bottom: 10px; font-size: 16px;">
+                        🤖 סיכום חכם של השיעור:
+                    </div>
+                    <div>${formatMarkdown(data.summary)}</div>
+                `;
+            } catch (err) {
+                box.innerHTML = `<span style="color: #dc3545;">❌ ${err.message}</span>`;
+            } finally {
+                btn.disabled = false;
             }
         }
 
-        // פתיחת טופס האימייל עם נושא אוטומטי
-        function openEmailForm(formId, lessonTopic) {
+        function openEmailForm(formId) {
             const form = document.getElementById(formId);
-            if (form.style.display === 'block') {
-                form.style.display = 'none';
-            } else {
-                form.style.display = 'block';
-                // ממלא אוטומטית את נושא המייל לפי נושא השיעור
-                const subjectInput = form.querySelector('.email-input');
-                subjectInput.value = "שאלה לגבי שיעור: " + lessonTopic;
-            }
+            form.style.display = form.style.display === 'block' ? 'none' : 'block';
         }
 
-        // שליחת האימייל
-        function sendEmail(formId) {
-            alert("המייל נשלח בהצלחה לתיבת האימייל של המרצה!");
-            document.getElementById(formId).style.display = 'none';
+        async function sendQuestionToLecturer(lessonId) {
+            const recipientEmail = document.getElementById(`email_recipient_${lessonId}`).value;
+            const subject = document.getElementById(`email_subj_${lessonId}`).value.trim();
+            const body = document.getElementById(`email_body_${lessonId}`).value.trim();
+            if (!subject || !body) return alert("נא להזין נושא ותוכן לשאלה.");
+
+            const btn = document.getElementById(`email_send_btn_${lessonId}`);
+            const statusEl = document.getElementById(`email_status_${lessonId}`);
+            btn.disabled = true;
+            btn.innerText = "שולח מייל... ⏳";
+            statusEl.innerHTML = '';
+
+            try {
+                const res = await fetch('/api/emails/ask-lecturer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        course_name: selectedCourseName,
+                        student_email: studentEmail,
+                        student_name: studentName,
+                        recipient_email: recipientEmail || null,
+                        subject: subject,
+                        body: body
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "שגיאה בשליחת המייל");
+
+                document.getElementById(`email_body_${lessonId}`).value = '';
+                statusEl.innerHTML = data.test_mode
+                    ? `<span style="color: #856404; font-weight: bold;">✅ מצב בדיקה: המייל נשלח לתיבה שלך (${escapeHtml(data.delivered_to)}) במקום אל ${escapeHtml(data.intended_lecturer)}!</span>`
+                    : `<span style="color: #28a745; font-weight: bold;">✅ השאלה נשלחה בהצלחה אל ${escapeHtml(data.intended_lecturer)}!</span>`;
+
+                setTimeout(() => {
+                    document.getElementById(`email_${lessonId}`).style.display = 'none';
+                    statusEl.innerHTML = '';
+                }, 3500);
+            } catch (err) {
+                statusEl.innerHTML = `<span style="color: #dc3545; font-weight: bold;">❌ ${escapeHtml(err.message)}</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "שלח שאלה 🚀";
+            }
         }
     </script>
 </body>

@@ -4,29 +4,69 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartLMS - כניסה למערכת</title>
-    
-    <!-- הספריה הרשמית של גוגל להתחברות -->
+
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    
+
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            background-color: #f0f2f5;
+            background: linear-gradient(135deg, #eef2f7 0%, #d9e4f5 100%);
         }
         .login-box {
             background: white;
             padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
             text-align: center;
-            max-width: 400px;
+            max-width: 420px;
             width: 90%;
+        }
+        h1 { margin: 0 0 8px 0; color: #004085; }
+        p.sub { color: #555; margin-bottom: 24px; }
+        .google-wrap { display: flex; justify-content: center; margin-bottom: 10px; }
+        .divider {
+            display: flex;
+            align-items: center;
+            color: #888;
+            margin: 22px 0;
+            font-size: 13px;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #ddd;
+        }
+        .divider::before { margin-left: 10px; }
+        .divider::after { margin-right: 10px; }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: 0.2s;
+        }
+        .demo-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .btn-demo-lec { background: #17a2b8; color: white; flex: 1; margin-bottom: 0; }
+        .btn-demo-lec:hover { background: #138496; }
+        .btn-demo-stu { background: #20c997; color: white; flex: 1; margin-bottom: 0; }
+        .btn-demo-stu:hover { background: #1aa179; }
+        .btn-admin { background: #343a40; color: white; }
+        .btn-admin:hover { background: #23272b; }
+        .error-msg {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
         }
     </style>
 </head>
@@ -34,52 +74,92 @@
 
     <div class="login-box">
         <h1>ברוכים הבאים</h1>
-        <p>אנא התחבר/י עם חשבון הגוגל שלך כדי להיכנס לשיעור</p>
+        <p class="sub">אנא התחבר/י עם חשבון הגוגל שלך כדי להיכנס למערכת</p>
 
-        <!-- הגדרות החיבור לגוגל (כאן שמים את ה-Client ID) -->
+        <!-- התחברות Google אמיתית ומאובטחת -->
         <div id="g_id_onload"
              data-client_id="267484936152-52i3bh1887hvt4a0bvi2tb8csgemh1ff.apps.googleusercontent.com"
              data-callback="handleCredentialResponse"
              data-auto_prompt="false">
         </div>
-        
-        <!-- כפתור ההתחברות המעוצב של גוגל -->
-        <div class="g_id_signin"
-             data-type="standard"
-             data-size="large"
-             data-theme="outline"
-             data-text="sign_in_with"
-             data-shape="rectangular"
-             data-logo_alignment="center">
+
+        <div class="google-wrap">
+            <div class="g_id_signin"
+                 data-type="standard"
+                 data-size="large"
+                 data-theme="outline"
+                 data-text="sign_in_with"
+                 data-shape="rectangular"
+                 data-logo_alignment="center">
+            </div>
         </div>
+
+        <div class="divider">סביבת הדגמה סגורה (ללא גישה לחשבונות אמיתיים)</div>
+
+        <div class="demo-row">
+            <button type="button" class="btn btn-demo-lec" onclick="loginAsDemo('lecturer')">👨‍🏫 מרצה דמו</button>
+            <button type="button" class="btn btn-demo-stu" onclick="loginAsDemo('student')">🎓 תלמיד דמו</button>
+        </div>
+
+        <button type="button" class="btn btn-admin" onclick="window.location.href='/admin'">🛡️ כניסת מנהל מערכת (Admin)</button>
+
+        <div class="error-msg" id="loginError"></div>
     </div>
 
-   <script>
+    <script>
+        function showError(msg) {
+            const el = document.getElementById("loginError");
+            el.innerText = msg;
+            el.style.display = "block";
+        }
+
+        function finishLogin(data) {
+            localStorage.setItem("user_email", data.email);
+            localStorage.setItem("user_name", data.name);
+            localStorage.setItem("user_role", data.role);
+            localStorage.setItem("student_email", data.email);
+            localStorage.setItem("student_name", data.name);
+
+            if (data.role === "lecturer") {
+                window.location.href = "/lecturer.html";
+            } else {
+                window.location.href = "/student_dashboard.html";
+            }
+        }
+
         async function handleCredentialResponse(response) {
-            const googleToken = response.credential;
-            
             try {
-                // הקוד הזה לוקח את הטוקן מגוגל ושולח אותו לשרת הפייתון שלנו!
-                const res = await fetch("http://127.0.0.1:8000/auth/google", {
+                const res = await fetch("/auth/google", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ token: googleToken })
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ token: response.credential })
                 });
 
                 const data = await res.json();
 
                 if (res.ok) {
-                    alert("התחברת בהצלחה, " + data.name + "!");
-                    // מעביר לדשבורד המרצה
-                    window.location.href = "/lecturer-dashboard";
+                    finishLogin(data);
                 } else {
-                    alert("שגיאה: " + data.detail);
+                    showError("שגיאה: " + (data.detail || "אימות נכשל"));
                 }
             } catch (error) {
                 console.error("Error:", error);
-                alert("אין תקשורת מול השרת.");
+                showError("אין תקשורת מול השרת.");
+            }
+        }
+
+        async function loginAsDemo(demoType) {
+            try {
+                const res = await fetch("/auth/mock-login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ demo_type: demoType })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "שגיאה בהתחברות דמו");
+                finishLogin(data);
+            } catch (err) {
+                showError(err.message);
             }
         }
     </script>

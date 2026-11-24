@@ -9,31 +9,42 @@
         .navbar { background-color: #004085; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .navbar h1 { margin: 0; font-size: 24px; }
         
-        .container { max-width: 900px; margin: 40px auto; padding: 0 20px; text-align: center; }
-        h2 { color: #333; margin-bottom: 30px; font-size: 28px; }
+        .container { max-width: 960px; margin: 40px auto; padding: 0 20px; text-align: center; }
+        h2 { color: #333; margin-bottom: 10px; font-size: 28px; }
+        .sub-title { color: #666; margin-bottom: 30px; font-size: 16px; }
         
         .course-grid { 
             display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); 
             gap: 25px; 
         }
         
         .course-card {
-            background: white; border-radius: 12px; padding: 40px 20px; text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
-            font-size: 22px; font-weight: bold; color: #2c3e50; border: 1px solid #e1e8ed;
+            background: white; border-radius: 12px; padding: 28px 20px; text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.06); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+            color: #2c3e50; border: 1px solid #e1e8ed; display: flex; flex-direction: column; justify-content: space-between;
         }
         
         .course-card:hover { 
             transform: translateY(-5px); 
-            box-shadow: 0 8px 15px rgba(0,0,0,0.1); 
+            box-shadow: 0 8px 18px rgba(0,0,0,0.12); 
             border-color: #007bff;
         }
+
+        .course-title { font-size: 22px; font-weight: bold; margin-bottom: 10px; }
+        .course-meta { font-size: 14px; color: #666; margin-bottom: 16px; line-height: 1.6; }
+
+        .card-actions { display: flex; justify-content: center; gap: 8px; border-top: 1px solid #f0f0f0; padding-top: 12px; }
+        .action-btn { border: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: bold; }
+        .btn-edit { background: #fff3cd; color: #856404; }
+        .btn-edit:hover { background: #ffe69c; }
+        .btn-del { background: #f8d7da; color: #721c24; }
+        .btn-del:hover { background: #f1aeb5; }
         
         .add-course { 
-            background: #e8f5e9; color: #2e7d32; border: 2px dashed #4caf50; 
+            background: #e8f5e9; color: #2e7d32; border: 2px dashed #4caf50;
+            justify-content: center; font-size: 21px; font-weight: bold; min-height: 160px;
         }
-        
         .add-course:hover { background: #c8e6c9; border-color: #388e3c; }
     </style>
 </head>
@@ -41,39 +52,136 @@
 
     <div class="navbar">
         <h1>🎓 SmartLMS</h1>
-        <div class="user-info">שלום, כפיר (מרצה) | <a href="/" style="color: #ffcccc; text-decoration: none;">התנתק</a></div>
+        <div class="user-info"><span id="lecturerGreeting">שלום, מרצה</span> | <a href="/" style="color: #ffcccc; text-decoration: none;">התנתק</a></div>
     </div>
 
     <div class="container">
         <h2>הקורסים שלי</h2>
+        <p id="emptyCoursesHint" class="sub-title" style="display: none;">אין לך קורסים עדיין. לחץ על <strong>"+ הוסף קורס חדש"</strong> כדי ליצור את הקורס הראשון שלך.</p>
         
         <div class="course-grid" id="courseList">
-          <div class="course-card" onclick="window.location.href='/course_dashboard.html'">
-    מבוא לחישוב
-    <div style="font-size: 14px; color: #777; margin-top: 15px; font-weight: normal;">נפתח ב: 15/10/2026</div>
-</div>
-            
-            <!-- כפתור הוספת קורס חדש -->
-            <div class="course-card add-course" onclick="addNewCourse()">
+            <div class="course-card add-course" id="addCourseCard" onclick="addNewCourse()">
                 + הוסף קורס חדש
             </div>
         </div>
     </div>
 
     <script>
-        // פונקציה ויזואלית להוספת קורס למסך
-        function addNewCourse() {
-            const newCourse = prompt("הכנס את שם הקורס החדש (לדוגמה: אינפי 1):");
-            if (newCourse && newCourse.trim() !== "") {
-                const grid = document.getElementById("courseList");
-                const newCard = document.createElement("div");
-                newCard.className = "course-card";
-                newCard.innerText = newCourse;
-                // בלחיצה על הקורס החדש, גם הוא יעביר לדשבורד הקורס הספציפי
-                newCard.onclick = function() { window.location.href = '/course_dashboard.html'; };
-                
-                // מכניס את הקורס החדש לפני כפתור ה"הוסף"
-                grid.insertBefore(newCard, grid.lastElementChild);
+        const lecturerEmail = localStorage.getItem('user_email') || '';
+        const lecturerName = localStorage.getItem('user_name') || 'מרצה';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!lecturerEmail) {
+                window.location.href = '/';
+                return;
+            }
+            document.getElementById('lecturerGreeting').innerText = `שלום, ${lecturerName} (מרצה)`;
+            loadLecturerCourses();
+        });
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function openCourse(course) {
+            localStorage.setItem('course_id', course.id);
+            localStorage.setItem('course_name', course.course_name);
+            localStorage.setItem('course_created_at', course.created_at || '');
+            window.location.href = '/course_dashboard.html';
+        }
+
+        async function loadLecturerCourses() {
+            const grid = document.getElementById('courseList');
+            const addCard = document.getElementById('addCourseCard');
+            const hint = document.getElementById('emptyCoursesHint');
+
+            Array.from(grid.querySelectorAll('.existing-course')).forEach(el => el.remove());
+
+            try {
+                const res = await fetch(`/api/lecturer/courses?lecturer_id=${encodeURIComponent(lecturerEmail)}`);
+                const data = await res.json();
+                const courses = data.courses || [];
+
+                hint.style.display = courses.length === 0 ? 'block' : 'none';
+
+                courses.forEach(c => {
+                    const card = document.createElement('div');
+                    card.className = 'course-card existing-course';
+                    card.onclick = () => openCourse(c);
+                    card.innerHTML = `
+                        <div>
+                            <div class="course-title">${escapeHtml(c.course_name)}</div>
+                            <div class="course-meta">
+                                נפתח ב: <strong>${escapeHtml(c.created_at || 'לא צוין')}</strong><br>
+                                סטודנטים רשומים: <strong>${c.students_count}</strong>
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            <button type="button" class="action-btn btn-edit" onclick="event.stopPropagation(); renameCourse(${c.id}, '${escapeHtml(c.course_name)}')">✏️ ערוך שם</button>
+                            <button type="button" class="action-btn btn-del" onclick="event.stopPropagation(); deleteCourse(${c.id}, '${escapeHtml(c.course_name)}')">🗑️ מחק</button>
+                        </div>
+                    `;
+                    grid.insertBefore(card, addCard);
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function addNewCourse() {
+            const newCourse = prompt("הכנס את שם הקורס החדש (לדוגמה: מבוא לחישוב):");
+            if (!newCourse || !newCourse.trim()) return;
+
+            try {
+                const res = await fetch('/api/lecturer/courses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        course_name: newCourse.trim(),
+                        lecturer_id: lecturerEmail
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) return alert(data.detail || 'שגיאה ביצירת הקורס');
+                loadLecturerCourses();
+            } catch (err) {
+                alert('שגיאת תקשורת מול השרת');
+            }
+        }
+
+        async function renameCourse(courseId, currentName) {
+            const updatedName = prompt("הזן שם חדש לקורס (תאריך ושנת הפתיחה יישמרו ללא שינוי):", currentName);
+            if (!updatedName || !updatedName.trim() || updatedName.trim() === currentName) return;
+
+            try {
+                const res = await fetch(`/api/lecturer/courses/${courseId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        course_name: updatedName.trim(),
+                        lecturer_id: lecturerEmail
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) return alert(data.detail || 'שגיאה בעדכון שם הקורס');
+                loadLecturerCourses();
+            } catch (err) {
+                alert('שגיאת תקשורת מול השרת');
+            }
+        }
+
+        async function deleteCourse(courseId, courseName) {
+            if (!confirm(`האם למחוק לצמיתות את הקורס "${courseName}"? פעולה זו תסיר אותו גם מרשימת הקורסים של הסטודנטים.`)) return;
+
+            try {
+                const res = await fetch(`/api/lecturer/courses/${courseId}?lecturer_id=${encodeURIComponent(lecturerEmail)}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (!res.ok) return alert(data.detail || 'שגיאה במחיקת הקורס');
+                loadLecturerCourses();
+            } catch (err) {
+                alert('שגיאת תקשורת מול השרת');
             }
         }
     </script>
